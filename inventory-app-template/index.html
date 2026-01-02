@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>在庫管理システム</title>
-
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
 body { font-family: sans-serif; padding: 30px; }
 input, button { padding: 6px; margin: 3px; }
@@ -11,7 +11,6 @@ table { border-collapse: collapse; margin-bottom: 30px; width: 900px; }
 th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
 th { background: #f0f0f0; }
 .low { background: #ffe5e5; color: #c00; font-weight: bold; }
-h2 { margin-top: 40px; }
 </style>
 </head>
 
@@ -19,12 +18,10 @@ h2 { margin-top: 40px; }
 
 <h1>在庫管理システム</h1>
 
-<div>
-  ユーザー名：
-  <input id="userInput" placeholder="例：山田">
-</div>
+ユーザー名：
+<input id="userInput" placeholder="例：山田">
 
-<h2>入庫 / 出庫</h2>
+<h2>入庫</h2>
 <input id="nameInput" placeholder="商品名">
 <input id="qtyInput" type="number" placeholder="数量">
 <button onclick="addItem()">入庫</button>
@@ -34,134 +31,88 @@ h2 { margin-top: 40px; }
 <h2>入出庫履歴</h2>
 <table id="historyTable"></table>
 
-<h2>月次出庫集計</h2>
-<table id="monthlyTable"></table>
-
-<h2>CSV</h2>
-<button onclick="exportCSV()">CSVエクスポート</button>
-<input type="file" onchange="importCSV(this)">
-
 <script>
-let stocks = JSON.parse(localStorage.getItem("stocks") || "[]");
-let history = JSON.parse(localStorage.getItem("history") || "[]");
+const supabase = supabasejs.createClient(
+  "https://dabhwrkugxxbkvwlcyxi.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ"
+);
+
 const ALERT_QTY = 3;
 
-window.onload = renderAll;
-
-function save() {
-  localStorage.setItem("stocks", JSON.stringify(stocks));
-  localStorage.setItem("history", JSON.stringify(history));
+async function loadAll() {
+  const { data: stocks } = await supabase.from("stocks").select("*");
+  const { data: history } = await supabase.from("history").select("*").order("date", { ascending: false });
+  renderStocks(stocks);
+  renderHistory(history);
 }
 
-function user() {
-  return document.getElementById("userInput").value || "未入力";
-}
-
-function addItem() {
+async function addItem() {
   const name = nameInput.value;
   const qty = Number(qtyInput.value);
-  if (!name || !qty) return alert("入力不足");
+  if (!name || !qty) return;
 
-  let item = stocks.find(s => s.name === name);
-  if (item) item.qty += qty;
-  else stocks.push({ name, qty });
+  const { data } = await supabase.from("stocks").select("*").eq("name", name).single();
 
-  log("入庫", name, qty);
-  save(); renderAll();
-}
+  if (data) {
+    await supabase.from("stocks").update({ qty: data.qty + qty }).eq("id", data.id);
+  } else {
+    await supabase.from("stocks").insert({ name, qty });
+  }
 
-function ship(name) {
-  let item = stocks.find(s => s.name === name);
-  if (!item) return;
-  item.qty -= 1;
-  log("出庫", name, 1);
-  if (item.qty <= 0) stocks = stocks.filter(s => s.qty > 0);
-  save(); renderAll();
-}
-
-function del(name) {
-  stocks = stocks.filter(s => s.name !== name);
-  log("削除", name, "-");
-  save(); renderAll();
-}
-
-function log(type, name, qty) {
-  history.unshift({
-    date: new Date().toISOString(),
-    user: user(),
-    type, name, qty
+  await supabase.from("history").insert({
+    date: new Date(),
+    user: userInput.value || "未入力",
+    type: "入庫",
+    name,
+    qty
   });
+
+  loadAll();
 }
 
-function renderAll() {
-  renderStocks();
-  renderHistory();
-  renderMonthly();
+async function ship(name) {
+  const { data } = await supabase.from("stocks").select("*").eq("name", name).single();
+  if (!data) return;
+
+  const newQty = data.qty - 1;
+  if (newQty <= 0) {
+    await supabase.from("stocks").delete().eq("id", data.id);
+  } else {
+    await supabase.from("stocks").update({ qty: newQty }).eq("id", data.id);
+  }
+
+  await supabase.from("history").insert({
+    date: new Date(),
+    user: userInput.value || "未入力",
+    type: "出庫",
+    name,
+    qty: 1
+  });
+
+  loadAll();
 }
 
-function renderStocks() {
-  stockTable.innerHTML = `
-    <tr><th>商品</th><th>数量</th><th>操作</th></tr>`;
+function renderStocks(stocks) {
+  stockTable.innerHTML = `<tr><th>商品</th><th>数量</th><th>操作</th></tr>`;
   stocks.forEach(s => {
     const tr = stockTable.insertRow();
     if (s.qty <= ALERT_QTY) tr.className = "low";
     tr.innerHTML = `
       <td>${s.name}</td>
       <td>${s.qty}</td>
-      <td>
-        <button onclick="ship('${s.name}')">出庫</button>
-        <button onclick="del('${s.name}')">削除</button>
-      </td>`;
+      <td><button onclick="ship('${s.name}')">出庫</button></td>`;
   });
 }
 
-function renderHistory() {
-  historyTable.innerHTML = `
-    <tr><th>日時</th><th>ユーザー</th><th>種別</th><th>商品</th><th>数量</th></tr>`;
+function renderHistory(history) {
+  historyTable.innerHTML = `<tr><th>日時</th><th>ユーザー</th><th>種別</th><th>商品</th><th>数量</th></tr>`;
   history.forEach(h => {
     historyTable.insertRow().innerHTML =
       `<td>${h.date}</td><td>${h.user}</td><td>${h.type}</td><td>${h.name}</td><td>${h.qty}</td>`;
   });
 }
 
-function renderMonthly() {
-  const map = {};
-  history.filter(h => h.type === "出庫").forEach(h => {
-    const m = h.date.slice(0,7);
-    map[m] = (map[m] || 0) + Number(h.qty);
-  });
-
-  monthlyTable.innerHTML = `<tr><th>月</th><th>出庫数</th></tr>`;
-  Object.keys(map).forEach(m => {
-    monthlyTable.insertRow().innerHTML = `<td>${m}</td><td>${map[m]}</td>`;
-  });
-}
-
-function exportCSV() {
-  let csv = "date,user,type,name,qty\n";
-  history.forEach(h => {
-    csv += `${h.date},${h.user},${h.type},${h.name},${h.qty}\n`;
-  });
-  const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "history.csv";
-  a.click();
-}
-
-function importCSV(input) {
-  const file = input.files[0];
-  const reader = new FileReader();
-  reader.onload = e => {
-    const rows = e.target.result.split("\n").slice(1);
-    rows.forEach(r => {
-      const [date,user,type,name,qty] = r.split(",");
-      if (type && name) history.push({ date,user,type,name,qty });
-    });
-    save(); renderAll();
-  };
-  reader.readAsText(file);
-}
+loadAll();
 </script>
 
 </body>
