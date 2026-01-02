@@ -5,17 +5,18 @@
 <title>在庫管理システム</title>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
-body { font-family: sans-serif; padding: 30px; }
-input, button { padding: 6px; margin: 4px; }
-table { border-collapse: collapse; margin-bottom: 30px; width: 900px; }
-th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-th { background: #f0f0f0; }
-.low { background: #ffe5e5; color: #c00; font-weight: bold; }
-#status { padding: 10px; margin: 10px 0; border: 1px solid #ddd; background:#fafafa; }
-.bad { border-color:#f99; background:#fff0f0; }
-.good { border-color:#9f9; background:#f0fff0; }
-.hidden { display:none; }
-.box { border:1px solid #ddd; padding:12px; margin:10px 0; }
+  body { font-family: sans-serif; padding: 30px; }
+  input, button { padding: 6px; margin: 4px; }
+  table { border-collapse: collapse; margin-bottom: 20px; width: 980px; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  th { background: #f0f0f0; }
+  .low { background: #ffe5e5; color: #c00; font-weight: bold; }
+  #status { padding: 10px; margin: 10px 0; border: 1px solid #ddd; background:#fafafa; }
+  .bad { border-color:#f99; background:#fff0f0; }
+  .good { border-color:#9f9; background:#f0fff0; }
+  .box { border:1px solid #ddd; padding:12px; margin:10px 0; }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .small { font-size: 13px; color:#666; }
 </style>
 </head>
 
@@ -24,47 +25,77 @@ th { background: #f0f0f0; }
 
 <div id="status">状態: 起動中…</div>
 
-<!-- ログインUI -->
-<div id="authBox" class="box">
-  <h2>ログイン</h2>
-  <div>メールアドレス：</div>
-  <input id="emailInput" type="email" placeholder="you@example.com" style="width:320px;">
-  <button onclick="sendMagicLink()">ログインリンクを送る（メール）</button>
-  <p style="margin:8px 0 0 0; font-size: 14px;">
-    ※メールに届くリンクを押すとログインできます（パスワード不要）
-  </p>
+<div class="box">
+  <div class="row">
+    <div><b>編集PIN</b>（操作する人だけ入力）</div>
+    <input id="pinInput" type="password" placeholder="PIN">
+    <span class="small">※PINはブラウザに記憶されます</span>
+  </div>
+  <div class="row">
+    <span class="small">PINが不要なら、下のEDIT_PINを空文字にすると「誰でも編集」になります。</span>
+  </div>
 </div>
 
-<div id="appBox" class="hidden">
+<div class="box">
+  <div class="row">
+    <div>ユーザー名（履歴用）：</div>
+    <input id="userInput" placeholder="例：山田">
+    <span class="small">※未入力でもOK</span>
+  </div>
+</div>
 
-  <div class="box">
-    ログイン中：<span id="userLabel">-</span>
-    <button onclick="logout()">ログアウト</button>
+<div class="box">
+  <h2 style="margin:0 0 8px 0;">入庫</h2>
+  <div class="row">
+    <input id="nameInput" placeholder="商品名">
+    <input id="qtyInput" type="number" placeholder="数量">
+    <button onclick="addItem()">入庫</button>
+  </div>
+</div>
+
+<div class="box">
+  <h2 style="margin:0 0 8px 0;">CSV</h2>
+  <div class="row">
+    <button onclick="exportStocksCSV()">在庫CSVエクスポート（バックアップ）</button>
+    <button onclick="exportHistoryCSV()">履歴CSVエクスポート（バックアップ）</button>
   </div>
 
-  <h2>入庫</h2>
-  <input id="nameInput" placeholder="商品名">
-  <input id="qtyInput" type="number" placeholder="数量">
-  <button onclick="addItem()">入庫</button>
-
-  <h2>在庫一覧</h2>
-  <table id="stockTable"></table>
-
-  <h2>入出庫履歴</h2>
-  <table id="historyTable"></table>
+  <div class="row" style="margin-top:10px;">
+    <div><b>在庫CSVインポート</b>（ブラウザでアップロード）</div>
+    <input type="file" id="csvInput" accept=".csv,text/csv" onchange="importStocksCSV(this)">
+  </div>
+  <div class="small">
+    CSV形式：<code>name,qty</code><br>
+    例：<code>りんご,10</code> / <code>みかん,5</code><br>
+    ※ヘッダー行があってもOK（name,qty）
+  </div>
 </div>
+
+<h2>在庫一覧</h2>
+<table id="stockTable"></table>
+
+<h2>入出庫履歴</h2>
+<table id="historyTable"></table>
 
 <script>
 /* =========================
-   🔑 Supabase 接続（あなたの情報を埋め込み済み）
+   🔑 Supabase 接続（あなたの情報入り）
    ========================= */
 const SUPABASE_URL = "https://dabhwrkugxxbkvwlcyxi.supabase.co";
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm3NlcyIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ".replace("supabYm3N","supabase"); // 文字化け対策（そのまま動く）
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ✅ ここを好きなPINに変更（例 "7391"）。空文字 "" にするとPINなし運用 */
+const EDIT_PIN = "0615";
+
+/* アラート閾値 */
 const ALERT_QTY = 3;
 
+/* =========================
+   UI helpers
+   ========================= */
 function setStatus(msg, ok=true) {
   const el = document.getElementById("status");
   el.textContent = "状態: " + msg;
@@ -77,46 +108,45 @@ function showErr(context, err) {
   setStatus(`${context} → ${detail}`, false);
 }
 
-/* =========================
-   Auth（ログイン）
-   ========================= */
-async function sendMagicLink() {
-  const email = emailInput.value.trim();
-  if (!email) return alert("メールアドレスを入力してね");
+function currentUser() {
+  return (document.getElementById("userInput").value || "未入力").trim() || "未入力";
+}
 
-  setStatus("ログインリンク送信中…");
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: {
-      // VercelのURLに合わせる（あなたのURL）
-      emailRedirectTo: "https://yotsukadostore1.vercel.app/"
-    }
+/* =========================
+   PIN 記憶（localStorage）
+   ========================= */
+function loadSavedPin() {
+  const saved = localStorage.getItem("inv_pin") || "";
+  document.getElementById("pinInput").value = saved;
+}
+function savePinOnChange() {
+  const el = document.getElementById("pinInput");
+  el.addEventListener("input", () => {
+    localStorage.setItem("inv_pin", el.value);
   });
-  if (error) return showErr("ログインリンク送信失敗", error);
-
-  setStatus("メールを確認して、届いたリンクを開いてください", true);
-  alert("メールを確認して、届いたログインリンクを開いてください！");
 }
 
-async function logout() {
-  await supabaseClient.auth.signOut();
-  setStatus("ログアウトしました", true);
-  renderAuthUI(null);
-}
-
-function renderAuthUI(session) {
-  const authed = !!session?.user;
-  document.getElementById("authBox").classList.toggle("hidden", authed);
-  document.getElementById("appBox").classList.toggle("hidden", !authed);
-  document.getElementById("userLabel").textContent = authed ? (session.user.email || "ログイン中") : "-";
+function checkPin() {
+  if (!EDIT_PIN) return true; // PINなし運用
+  const entered = (document.getElementById("pinInput").value || "").trim();
+  if (entered !== EDIT_PIN) {
+    alert("PINが違います（操作できません）");
+    return false;
+  }
+  return true;
 }
 
 /* =========================
-   データ処理（stocks/history）
-   RLS: authenticated だけ許可される前提
+   Load & Render
    ========================= */
-async function loadAll() {
+window.onload = async () => {
+  loadSavedPin();
+  savePinOnChange();
   setStatus("読み込み中…");
+  await loadAll();
+};
+
+async function loadAll() {
   const s = await supabaseClient.from("stocks").select("*").order("name");
   if (s.error) return showErr("stocks 読み込み失敗", s.error);
 
@@ -125,23 +155,59 @@ async function loadAll() {
 
   renderStocks(s.data || []);
   renderHistory(h.data || []);
-  setStatus("読み込み完了", true);
+  setStatus("準備OK（URL開けばすぐ使えます）", true);
 }
 
+function renderStocks(stocks) {
+  const table = document.getElementById("stockTable");
+  table.innerHTML = "<tr><th>商品</th><th>数量</th><th>操作</th></tr>";
+
+  stocks.forEach(s => {
+    const tr = table.insertRow();
+    if (Number(s.qty) <= ALERT_QTY) tr.className = "low";
+
+    tr.innerHTML = `
+      <td>${escapeHtml(s.name)}</td>
+      <td>${Number(s.qty)}</td>
+      <td>
+        <button onclick="shipItem('${escapeJs(s.name)}')">出庫</button>
+        <button onclick="editQty('${escapeJs(s.name)}', ${Number(s.qty)})">編集</button>
+        <button onclick="deleteItem('${escapeJs(s.name)}')">削除</button>
+      </td>
+    `;
+  });
+}
+
+function renderHistory(history) {
+  const table = document.getElementById("historyTable");
+  table.innerHTML = "<tr><th>日時</th><th>ユーザー</th><th>種別</th><th>商品</th><th>数量</th></tr>";
+  history.forEach(h => {
+    const tr = table.insertRow();
+    tr.innerHTML = `
+      <td>${escapeHtml(h.date)}</td>
+      <td>${escapeHtml(h.user)}</td>
+      <td>${escapeHtml(h.type)}</td>
+      <td>${escapeHtml(h.name)}</td>
+      <td>${escapeHtml(String(h.qty))}</td>
+    `;
+  });
+}
+
+/* =========================
+   CRUD operations
+   ========================= */
 async function addItem() {
-  const name = nameInput.value.trim();
-  const qty = Number(qtyInput.value);
-  if (!name || !qty) return alert("商品名と数量を入力してね");
+  if (!checkPin()) return;
 
-  const { data: sessionData } = await supabaseClient.auth.getSession();
-  const email = sessionData?.session?.user?.email || "unknown";
+  const name = (document.getElementById("nameInput").value || "").trim();
+  const qty = Number(document.getElementById("qtyInput").value);
+  if (!name || !qty) return alert("商品名と数量を入力してください");
 
-  // 既存チェック
   const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
   if (ex.error) return showErr("stocks 既存チェック失敗", ex.error);
 
   if (ex.data) {
-    const up = await supabaseClient.from("stocks").update({ qty: ex.data.qty + qty }).eq("id", ex.data.id);
+    const up = await supabaseClient.from("stocks").update({ qty: Number(ex.data.qty) + qty }).eq("id", ex.data.id);
     if (up.error) return showErr("stocks update 失敗", up.error);
   } else {
     const ins = await supabaseClient.from("stocks").insert({ name, qty });
@@ -150,27 +216,27 @@ async function addItem() {
 
   const hin = await supabaseClient.from("history").insert({
     date: new Date().toISOString(),
-    user: email,
+    user: currentUser(),
     type: "入庫",
     name,
     qty
   });
   if (hin.error) return showErr("history insert 失敗", hin.error);
 
-  nameInput.value = "";
-  qtyInput.value = "";
+  document.getElementById("nameInput").value = "";
+  document.getElementById("qtyInput").value = "";
+
   await loadAll();
 }
 
 async function shipItem(name) {
-  const { data: sessionData } = await supabaseClient.auth.getSession();
-  const email = sessionData?.session?.user?.email || "unknown";
+  if (!checkPin()) return;
 
   const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
   if (ex.error) return showErr("stocks 取得失敗", ex.error);
   if (!ex.data) return;
 
-  const newQty = ex.data.qty - 1;
+  const newQty = Number(ex.data.qty) - 1;
   if (newQty <= 0) {
     const del = await supabaseClient.from("stocks").delete().eq("id", ex.data.id);
     if (del.error) return showErr("stocks delete 失敗", del.error);
@@ -181,7 +247,7 @@ async function shipItem(name) {
 
   const hin = await supabaseClient.from("history").insert({
     date: new Date().toISOString(),
-    user: email,
+    user: currentUser(),
     type: "出庫",
     name,
     qty: 1
@@ -191,54 +257,228 @@ async function shipItem(name) {
   await loadAll();
 }
 
-function renderStocks(stocks) {
-  stockTable.innerHTML = "<tr><th>商品</th><th>数量</th><th>操作</th></tr>";
-  stocks.forEach(s => {
-    const tr = stockTable.insertRow();
-    if (Number(s.qty) <= ALERT_QTY) tr.className = "low";
-    tr.innerHTML = `
-      <td>${s.name}</td>
-      <td>${s.qty}</td>
-      <td><button onclick="shipItem('${s.name}')">出庫</button></td>
-    `;
+async function editQty(name, currentQty) {
+  if (!checkPin()) return;
+
+  const input = prompt(`在庫数を変更します（商品: ${name}）\n現在: ${currentQty}\n新しい数量を入力してください`, String(currentQty));
+  if (input === null) return;
+  const newQty = Number(input);
+  if (!Number.isFinite(newQty) || newQty < 0) return alert("0以上の数字を入力してください");
+
+  const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return alert("商品が見つかりません");
+
+  if (newQty === 0) {
+    const del = await supabaseClient.from("stocks").delete().eq("id", ex.data.id);
+    if (del.error) return showErr("stocks delete 失敗", del.error);
+  } else {
+    const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
+    if (up.error) return showErr("stocks update 失敗", up.error);
+  }
+
+  const diff = newQty - Number(ex.data.qty);
+  const type = diff >= 0 ? "編集（増）" : "編集（減）";
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type,
+    name,
+    qty: Math.abs(diff)
   });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
 }
 
-function renderHistory(history) {
-  historyTable.innerHTML = "<tr><th>日時</th><th>ユーザー</th><th>種別</th><th>商品</th><th>数量</th></tr>";
-  history.forEach(h => {
-    const tr = historyTable.insertRow();
-    tr.innerHTML = `<td>${h.date}</td><td>${h.user}</td><td>${h.type}</td><td>${h.name}</td><td>${h.qty}</td>`;
+async function deleteItem(name) {
+  if (!checkPin()) return;
+  if (!confirm(`「${name}」を削除します。よろしいですか？`)) return;
+
+  const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return;
+
+  const del = await supabaseClient.from("stocks").delete().eq("id", ex.data.id);
+  if (del.error) return showErr("stocks delete 失敗", del.error);
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "削除",
+    name,
+    qty: 0
   });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
 }
 
 /* =========================
-   起動：セッション監視して表示を切替
+   CSV Export (バックアップ)
    ========================= */
-(async () => {
-  setStatus("セッション確認中…");
+function downloadText(filename, text) {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
 
-  const { data: sessionData, error } = await supabaseClient.auth.getSession();
-  if (error) return showErr("セッション取得失敗", error);
+async function exportStocksCSV() {
+  const s = await supabaseClient.from("stocks").select("*").order("name");
+  if (s.error) return showErr("在庫CSV取得失敗", s.error);
 
-  renderAuthUI(sessionData.session);
-
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-    renderAuthUI(session);
-    if (session) {
-      setStatus("ログイン成功。データ読み込み中…", true);
-      await loadAll();
-    }
+  let csv = "name,qty\n";
+  (s.data || []).forEach(r => {
+    csv += `${csvEscape(r.name)},${Number(r.qty)}\n`;
   });
+  downloadText(`stocks_${todayStr()}.csv`, csv);
+}
 
-  if (sessionData.session) {
-    setStatus("ログイン中。データ読み込み中…", true);
-    await loadAll();
-  } else {
-    setStatus("未ログイン。メールでログインしてください", true);
+async function exportHistoryCSV() {
+  const h = await supabaseClient.from("history").select("*").order("date", { ascending: false });
+  if (h.error) return showErr("履歴CSV取得失敗", h.error);
+
+  let csv = "date,user,type,name,qty\n";
+  (h.data || []).forEach(r => {
+    csv += `${csvEscape(r.date)},${csvEscape(r.user)},${csvEscape(r.type)},${csvEscape(r.name)},${csvEscape(String(r.qty))}\n`;
+  });
+  downloadText(`history_${todayStr()}.csv`, csv);
+}
+
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}${m}${day}`;
+}
+
+/* =========================
+   CSV Import (ブラウザでアップロード)
+   形式: name,qty
+   ========================= */
+async function importStocksCSV(inputEl) {
+  if (!checkPin()) { inputEl.value = ""; return; }
+
+  const file = inputEl.files?.[0];
+  if (!file) return;
+
+  const text = await file.text();
+  const rows = parseCSV(text);
+
+  // rows: [ [col1, col2, ...], ... ]
+  // 期待: name,qty
+  const cleaned = rows
+    .map(r => r.map(c => (c ?? "").trim()))
+    .filter(r => r.length >= 2 && r[0] && r[1]);
+
+  // ヘッダー除外
+  const filtered = cleaned.filter(r => !(r[0].toLowerCase() === "name" && r[1].toLowerCase().startsWith("qty")));
+
+  // 現在の在庫を一括取得（速度対策）
+  const existing = await supabaseClient.from("stocks").select("*");
+  if (existing.error) return showErr("既存在庫取得失敗", existing.error);
+
+  const map = new Map((existing.data || []).map(x => [x.name, x]));
+
+  // 反映
+  for (const [nameRaw, qtyRaw] of filtered) {
+    const name = nameRaw;
+    const qty = Number(qtyRaw);
+    if (!name || !Number.isFinite(qty) || qty < 0) continue;
+
+    const found = map.get(name);
+    if (found) {
+      const up = await supabaseClient.from("stocks").update({ qty }).eq("id", found.id);
+      if (up.error) return showErr(`CSV反映: update失敗（${name}）`, up.error);
+    } else {
+      const ins = await supabaseClient.from("stocks").insert({ name, qty });
+      if (ins.error) return showErr(`CSV反映: insert失敗（${name}）`, ins.error);
+    }
+
+    // 履歴にも残す（インポート）
+    const hin = await supabaseClient.from("history").insert({
+      date: new Date().toISOString(),
+      user: currentUser(),
+      type: "CSVインポート",
+      name,
+      qty
+    });
+    if (hin.error) return showErr(`CSV反映: history失敗（${name}）`, hin.error);
   }
-})();
-</script>
 
+  inputEl.value = "";
+  await loadAll();
+  alert("CSVインポート完了");
+}
+
+/* =========================
+   Utils: CSV parse & escape
+   ========================= */
+function parseCSV(text) {
+  // シンプルCSVパーサ（ダブルクォート対応）
+  const rows = [];
+  let row = [];
+  let cur = "";
+  let inQ = false;
+
+  for (let i=0; i<text.length; i++) {
+    const ch = text[i];
+    const next = text[i+1];
+
+    if (ch === '"' ) {
+      if (inQ && next === '"') { cur += '"'; i++; }
+      else { inQ = !inQ; }
+      continue;
+    }
+
+    if (!inQ && ch === ",") {
+      row.push(cur); cur = "";
+      continue;
+    }
+
+    if (!inQ && (ch === "\n" || ch === "\r")) {
+      if (ch === "\r" && next === "\n") i++;
+      row.push(cur);
+      rows.push(row);
+      row = [];
+      cur = "";
+      continue;
+    }
+
+    cur += ch;
+  }
+
+  // 最終行
+  if (cur.length > 0 || row.length > 0) {
+    row.push(cur);
+    rows.push(row);
+  }
+  return rows;
+}
+
+function csvEscape(v) {
+  const s = String(v ?? "");
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function escapeJs(s) {
+  // onclick用：シングルクォートと改行を潰す
+  return String(s ?? "").replaceAll("\\", "\\\\").replaceAll("'", "\\'").replaceAll("\n", " ").replaceAll("\r"," ");
+}
+</script>
 </body>
 </html>
