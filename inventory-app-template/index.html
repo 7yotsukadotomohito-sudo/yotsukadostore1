@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>在庫管理システム</title>
-
-<!-- Supabase v2 -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
 <style>
 body { font-family: sans-serif; padding: 30px; }
 input, button { padding: 6px; margin: 4px; }
@@ -14,12 +11,16 @@ table { border-collapse: collapse; margin-bottom: 30px; width: 900px; }
 th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
 th { background: #f0f0f0; }
 .low { background: #ffe5e5; color: #c00; font-weight: bold; }
+#status { padding: 10px; margin: 10px 0; border: 1px solid #ddd; background:#fafafa; }
+.bad { border-color:#f99; background:#fff0f0; }
+.good { border-color:#9f9; background:#f0fff0; }
 </style>
 </head>
 
 <body>
-
 <h1>在庫管理システム</h1>
+
+<div id="status">状態: 起動中…</div>
 
 <div>
   ユーザー名：
@@ -38,168 +39,126 @@ th { background: #f0f0f0; }
 <table id="historyTable"></table>
 
 <script>
-/* =========================
-   🔑 Supabase 接続設定
-   ========================= */
 const SUPABASE_URL = "https://dabhwrkugxxbkvwlcyxi.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ"; // 改行なし
 
-const supabaseClient = supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
-
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ALERT_QTY = 3;
 
-/* =========================
-   初期ロード
-   ========================= */
-window.onload = () => {
-  loadAll();
-};
-
-/* =========================
-   データ取得
-   ========================= */
-async function loadAll() {
-  const { data: stocks, error: sErr } =
-    await supabaseClient.from("stocks").select("*").order("name");
-
-  const { data: history, error: hErr } =
-    await supabaseClient.from("history")
-      .select("*")
-      .order("date", { ascending: false });
-
-  if (sErr || hErr) {
-    alert("Supabase通信エラー（Consoleを確認）");
-    console.error(sErr, hErr);
-    return;
-  }
-
-  renderStocks(stocks);
-  renderHistory(history);
+function setStatus(msg, ok=true) {
+  const el = document.getElementById("status");
+  el.textContent = "状態: " + msg;
+  el.className = ok ? "good" : "bad";
 }
 
-/* =========================
-   入庫
-   ========================= */
+function showErr(context, err) {
+  console.error(context, err);
+  const detail = err ? (err.message || JSON.stringify(err)) : "unknown";
+  alert(`${context}\n\n${detail}`);
+  setStatus(`${context} → ${detail}`, false);
+}
+
+window.onload = async () => {
+  setStatus("Supabase 接続チェック中…");
+  // まずは「読めるか」だけテスト（テーブルが無くてもここで理由が出る）
+  const t = await supabaseClient.from("stocks").select("*").limit(1);
+  if (t.error) return showErr("stocks select 失敗", t.error);
+  setStatus("Supabase OK（stocks読めた）");
+  await loadAll();
+};
+
+async function loadAll() {
+  const s = await supabaseClient.from("stocks").select("*").order("name");
+  if (s.error) return showErr("stocks 読み込み失敗", s.error);
+
+  const h = await supabaseClient.from("history").select("*").order("date", { ascending: false });
+  if (h.error) return showErr("history 読み込み失敗", h.error);
+
+  renderStocks(s.data || []);
+  renderHistory(h.data || []);
+  setStatus("読み込み完了");
+}
+
 async function addItem() {
   const name = nameInput.value.trim();
   const qty = Number(qtyInput.value);
   const user = userInput.value || "未入力";
+  if (!name || !qty) return alert("商品名と数量を入力してください");
 
-  if (!name || !qty) {
-    alert("商品名と数量を入力してください");
-    return;
-  }
+  // 既存チェック
+  const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
+  if (ex.error) return showErr("stocks 既存チェック失敗", ex.error);
 
-  const { data: existing } = await supabaseClient
-    .from("stocks")
-    .select("*")
-    .eq("name", name)
-    .single();
-
-  if (existing) {
-    await supabaseClient
-      .from("stocks")
-      .update({ qty: existing.qty + qty })
-      .eq("id", existing.id);
+  if (ex.data) {
+    const up = await supabaseClient.from("stocks").update({ qty: ex.data.qty + qty }).eq("id", ex.data.id);
+    if (up.error) return showErr("stocks update 失敗", up.error);
   } else {
-    await supabaseClient
-      .from("stocks")
-      .insert({ name, qty });
+    const ins = await supabaseClient.from("stocks").insert({ name, qty });
+    if (ins.error) return showErr("stocks insert 失敗", ins.error);
   }
 
-  await supabaseClient.from("history").insert({
-    date: new Date(),
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
     user,
     type: "入庫",
     name,
     qty
   });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
 
   nameInput.value = "";
   qtyInput.value = "";
-
-  loadAll();
+  await loadAll();
 }
 
-/* =========================
-   出庫
-   ========================= */
 async function shipItem(name) {
   const user = userInput.value || "未入力";
 
-  const { data } = await supabaseClient
-    .from("stocks")
-    .select("*")
-    .eq("name", name)
-    .single();
+  const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return;
 
-  if (!data) return;
-
-  const newQty = data.qty - 1;
-
+  const newQty = ex.data.qty - 1;
   if (newQty <= 0) {
-    await supabaseClient
-      .from("stocks")
-      .delete()
-      .eq("id", data.id);
+    const del = await supabaseClient.from("stocks").delete().eq("id", ex.data.id);
+    if (del.error) return showErr("stocks delete 失敗", del.error);
   } else {
-    await supabaseClient
-      .from("stocks")
-      .update({ qty: newQty })
-      .eq("id", data.id);
+    const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
+    if (up.error) return showErr("stocks update 失敗", up.error);
   }
 
-  await supabaseClient.from("history").insert({
-    date: new Date(),
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
     user,
     type: "出庫",
     name,
     qty: 1
   });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
 
-  loadAll();
+  await loadAll();
 }
 
-/* =========================
-   表示
-   ========================= */
 function renderStocks(stocks) {
-  stockTable.innerHTML =
-    "<tr><th>商品</th><th>数量</th><th>操作</th></tr>";
-
+  stockTable.innerHTML = "<tr><th>商品</th><th>数量</th><th>操作</th></tr>";
   stocks.forEach(s => {
     const tr = stockTable.insertRow();
-    if (s.qty <= ALERT_QTY) tr.className = "low";
-
+    if (Number(s.qty) <= ALERT_QTY) tr.className = "low";
     tr.innerHTML = `
       <td>${s.name}</td>
       <td>${s.qty}</td>
-      <td>
-        <button onclick="shipItem('${s.name}')">出庫</button>
-      </td>
+      <td><button onclick="shipItem('${s.name}')">出庫</button></td>
     `;
   });
 }
 
 function renderHistory(history) {
-  historyTable.innerHTML =
-    "<tr><th>日時</th><th>ユーザー</th><th>種別</th><th>商品</th><th>数量</th></tr>";
-
+  historyTable.innerHTML = "<tr><th>日時</th><th>ユーザー</th><th>種別</th><th>商品</th><th>数量</th></tr>";
   history.forEach(h => {
     const tr = historyTable.insertRow();
-    tr.innerHTML = `
-      <td>${h.date}</td>
-      <td>${h.user}</td>
-      <td>${h.type}</td>
-      <td>${h.name}</td>
-      <td>${h.qty}</td>
-    `;
+    tr.innerHTML = `<td>${h.date}</td><td>${h.user}</td><td>${h.type}</td><td>${h.name}</td><td>${h.qty}</td>`;
   });
 }
 </script>
-
 </body>
 </html>
