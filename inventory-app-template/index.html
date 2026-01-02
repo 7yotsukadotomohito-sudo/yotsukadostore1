@@ -14,6 +14,8 @@ th { background: #f0f0f0; }
 #status { padding: 10px; margin: 10px 0; border: 1px solid #ddd; background:#fafafa; }
 .bad { border-color:#f99; background:#fff0f0; }
 .good { border-color:#9f9; background:#f0fff0; }
+.hidden { display:none; }
+.box { border:1px solid #ddd; padding:12px; margin:10px 0; }
 </style>
 </head>
 
@@ -22,25 +24,43 @@ th { background: #f0f0f0; }
 
 <div id="status">状態: 起動中…</div>
 
-<div>
-  ユーザー名：
-  <input id="userInput" placeholder="例：山田">
+<!-- ログインUI -->
+<div id="authBox" class="box">
+  <h2>ログイン</h2>
+  <div>メールアドレス：</div>
+  <input id="emailInput" type="email" placeholder="you@example.com" style="width:320px;">
+  <button onclick="sendMagicLink()">ログインリンクを送る（メール）</button>
+  <p style="margin:8px 0 0 0; font-size: 14px;">
+    ※メールに届くリンクを押すとログインできます（パスワード不要）
+  </p>
 </div>
 
-<h2>入庫</h2>
-<input id="nameInput" placeholder="商品名">
-<input id="qtyInput" type="number" placeholder="数量">
-<button onclick="addItem()">入庫</button>
+<div id="appBox" class="hidden">
 
-<h2>在庫一覧</h2>
-<table id="stockTable"></table>
+  <div class="box">
+    ログイン中：<span id="userLabel">-</span>
+    <button onclick="logout()">ログアウト</button>
+  </div>
 
-<h2>入出庫履歴</h2>
-<table id="historyTable"></table>
+  <h2>入庫</h2>
+  <input id="nameInput" placeholder="商品名">
+  <input id="qtyInput" type="number" placeholder="数量">
+  <button onclick="addItem()">入庫</button>
+
+  <h2>在庫一覧</h2>
+  <table id="stockTable"></table>
+
+  <h2>入出庫履歴</h2>
+  <table id="historyTable"></table>
+</div>
 
 <script>
+/* =========================
+   🔑 Supabase 接続（あなたの情報を埋め込み済み）
+   ========================= */
 const SUPABASE_URL = "https://dabhwrkugxxbkvwlcyxi.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ"; // 改行なし
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ALERT_QTY = 3;
@@ -50,7 +70,6 @@ function setStatus(msg, ok=true) {
   el.textContent = "状態: " + msg;
   el.className = ok ? "good" : "bad";
 }
-
 function showErr(context, err) {
   console.error(context, err);
   const detail = err ? (err.message || JSON.stringify(err)) : "unknown";
@@ -58,16 +77,46 @@ function showErr(context, err) {
   setStatus(`${context} → ${detail}`, false);
 }
 
-window.onload = async () => {
-  setStatus("Supabase 接続チェック中…");
-  // まずは「読めるか」だけテスト（テーブルが無くてもここで理由が出る）
-  const t = await supabaseClient.from("stocks").select("*").limit(1);
-  if (t.error) return showErr("stocks select 失敗", t.error);
-  setStatus("Supabase OK（stocks読めた）");
-  await loadAll();
-};
+/* =========================
+   Auth（ログイン）
+   ========================= */
+async function sendMagicLink() {
+  const email = emailInput.value.trim();
+  if (!email) return alert("メールアドレスを入力してね");
 
+  setStatus("ログインリンク送信中…");
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: {
+      // VercelのURLに合わせる（あなたのURL）
+      emailRedirectTo: "https://yotsukadostore1.vercel.app/"
+    }
+  });
+  if (error) return showErr("ログインリンク送信失敗", error);
+
+  setStatus("メールを確認して、届いたリンクを開いてください", true);
+  alert("メールを確認して、届いたログインリンクを開いてください！");
+}
+
+async function logout() {
+  await supabaseClient.auth.signOut();
+  setStatus("ログアウトしました", true);
+  renderAuthUI(null);
+}
+
+function renderAuthUI(session) {
+  const authed = !!session?.user;
+  document.getElementById("authBox").classList.toggle("hidden", authed);
+  document.getElementById("appBox").classList.toggle("hidden", !authed);
+  document.getElementById("userLabel").textContent = authed ? (session.user.email || "ログイン中") : "-";
+}
+
+/* =========================
+   データ処理（stocks/history）
+   RLS: authenticated だけ許可される前提
+   ========================= */
 async function loadAll() {
+  setStatus("読み込み中…");
   const s = await supabaseClient.from("stocks").select("*").order("name");
   if (s.error) return showErr("stocks 読み込み失敗", s.error);
 
@@ -76,14 +125,16 @@ async function loadAll() {
 
   renderStocks(s.data || []);
   renderHistory(h.data || []);
-  setStatus("読み込み完了");
+  setStatus("読み込み完了", true);
 }
 
 async function addItem() {
   const name = nameInput.value.trim();
   const qty = Number(qtyInput.value);
-  const user = userInput.value || "未入力";
-  if (!name || !qty) return alert("商品名と数量を入力してください");
+  if (!name || !qty) return alert("商品名と数量を入力してね");
+
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const email = sessionData?.session?.user?.email || "unknown";
 
   // 既存チェック
   const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
@@ -99,7 +150,7 @@ async function addItem() {
 
   const hin = await supabaseClient.from("history").insert({
     date: new Date().toISOString(),
-    user,
+    user: email,
     type: "入庫",
     name,
     qty
@@ -112,7 +163,8 @@ async function addItem() {
 }
 
 async function shipItem(name) {
-  const user = userInput.value || "未入力";
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const email = sessionData?.session?.user?.email || "unknown";
 
   const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
   if (ex.error) return showErr("stocks 取得失敗", ex.error);
@@ -129,7 +181,7 @@ async function shipItem(name) {
 
   const hin = await supabaseClient.from("history").insert({
     date: new Date().toISOString(),
-    user,
+    user: email,
     type: "出庫",
     name,
     qty: 1
@@ -159,6 +211,34 @@ function renderHistory(history) {
     tr.innerHTML = `<td>${h.date}</td><td>${h.user}</td><td>${h.type}</td><td>${h.name}</td><td>${h.qty}</td>`;
   });
 }
+
+/* =========================
+   起動：セッション監視して表示を切替
+   ========================= */
+(async () => {
+  setStatus("セッション確認中…");
+
+  const { data: sessionData, error } = await supabaseClient.auth.getSession();
+  if (error) return showErr("セッション取得失敗", error);
+
+  renderAuthUI(sessionData.session);
+
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    renderAuthUI(session);
+    if (session) {
+      setStatus("ログイン成功。データ読み込み中…", true);
+      await loadAll();
+    }
+  });
+
+  if (sessionData.session) {
+    setStatus("ログイン中。データ読み込み中…", true);
+    await loadAll();
+  } else {
+    setStatus("未ログイン。メールでログインしてください", true);
+  }
+})();
 </script>
+
 </body>
 </html>
