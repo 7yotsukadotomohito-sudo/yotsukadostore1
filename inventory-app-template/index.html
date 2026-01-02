@@ -1,85 +1,427 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>在庫管理システム</title>
+
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
 <style>
-  body { font-family: sans-serif; padding: 30px; }
-  input, button { padding: 6px; margin: 4px; }
-  table { border-collapse: collapse; margin-bottom: 20px; width: 1100px; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-  th { background: #f0f0f0; }
-  .low { background: #ffe5e5; color: #c00; font-weight: bold; }
-  #status { padding: 10px; margin: 10px 0; border: 1px solid #ddd; background:#fafafa; }
-  .bad { border-color:#f99; background:#fff0f0; }
-  .good { border-color:#9f9; background:#f0fff0; }
-  .box { border:1px solid #ddd; padding:12px; margin:10px 0; }
-  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .small { font-size: 13px; color:#666; }
-  code { background:#f6f6f6; padding:1px 4px; border-radius:4px; }
+  :root{
+    --bg:#f6f7fb;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --line:#e5e7eb;
+
+    --primary:#2563eb;
+    --primaryHover:#1d4ed8;
+    --danger:#dc2626;
+    --dangerHover:#b91c1c;
+    --ghost:#e5e7eb;
+    --ghostHover:#d1d5db;
+
+    --goodBg:#ecfdf5;
+    --goodLine:#86efac;
+    --badBg:#fff1f2;
+    --badLine:#fca5a5;
+
+    --lowBg:#fff1f2;
+    --lowText:#9f1239;
+
+    --radius:14px;
+    --shadow:0 8px 24px rgba(17,24,39,.08);
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    color:var(--text);
+    background:var(--bg);
+  }
+
+  a{ color:var(--primary); }
+  code{
+    background:#f3f4f6;
+    padding:2px 6px;
+    border-radius:8px;
+    font-size: 12px;
+  }
+
+  .container{
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 18px;
+  }
+
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .title{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  h1{
+    font-size: 22px;
+    margin:0;
+    letter-spacing: .02em;
+  }
+  .subtitle{
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .topActions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 900px){
+    .grid{ grid-template-columns: 1fr; }
+  }
+
+  .sectionTitle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 8px;
+    margin: 0 0 10px 0;
+  }
+  .sectionTitle h2{
+    margin:0;
+    font-size: 16px;
+  }
+  .hint{
+    color:var(--muted);
+    font-size: 12px;
+  }
+
+  /* Status */
+  #status{
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: #fff;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+  #status.good{
+    background: var(--goodBg);
+    border-color: var(--goodLine);
+  }
+  #status.bad{
+    background: var(--badBg);
+    border-color: var(--badLine);
+  }
+
+  /* Form */
+  .row{
+    display:flex;
+    gap: 10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    min-width: 180px;
+    flex: 1;
+  }
+  .field label{
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  input[type="text"], input[type="password"], input[type="number"]{
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border:1px solid var(--line);
+    outline: none;
+    background:#fff;
+    font-size: 14px;
+  }
+  input:focus{
+    border-color: rgba(37,99,235,.55);
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+  }
+
+  input[type="file"]{
+    padding: 10px 0;
+  }
+
+  /* Buttons */
+  button{
+    border: none;
+    border-radius: 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: transform .02s ease, background .15s ease, opacity .15s ease;
+    user-select:none;
+    white-space:nowrap;
+  }
+  button:active{ transform: translateY(1px); }
+  button:disabled{ opacity:.55; cursor:not-allowed; }
+
+  .btn-primary{ background: var(--primary); color: #fff; }
+  .btn-primary:hover{ background: var(--primaryHover); }
+
+  .btn-danger{ background: var(--danger); color: #fff; }
+  .btn-danger:hover{ background: var(--dangerHover); }
+
+  .btn-ghost{ background: var(--ghost); color: var(--text); }
+  .btn-ghost:hover{ background: var(--ghostHover); }
+
+  .btn-small{
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  /* Tables */
+  .tableCard{ padding: 0; overflow: hidden; }
+  .tableHeader{
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+  }
+  .tableHeader h2{
+    margin:0;
+    font-size: 16px;
+  }
+  .tableWrap{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table{
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+    background: #fff;
+  }
+  th, td{
+    padding: 12px 12px;
+    border-bottom: 1px solid #f0f1f4;
+    text-align: left;
+    font-size: 14px;
+  }
+  th{
+    background: #fafafa;
+    color:#374151;
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  td.qty{
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+  td.center{ text-align:center; }
+  .muted{ color:var(--muted); font-size: 12px; }
+  tr.low-stock td{
+    background: var(--lowBg);
+    color: var(--lowText);
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--muted);
+    background:#fff;
+  }
+
+  /* Mobile helpers */
+  @media (max-width: 600px){
+    .topActions{
+      width:100%;
+      justify-content:flex-start;
+    }
+    .row.actions{
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .row.actions button{
+      width: 100%;
+    }
+    table{
+      min-width: 860px; /* 横スクロール前提 */
+    }
+  }
 </style>
 </head>
 
 <body>
-<h1>在庫管理システム</h1>
+<div class="container">
 
-<div id="status">状態: 起動中…</div>
+  <header>
+    <div class="title">
+      <h1>在庫管理システム</h1>
+      <div class="subtitle">URLで即利用 / 編集はPINで制御（ログインなし）</div>
+    </div>
 
-<div class="box">
-  <div class="row">
-    <div><b>編集PIN</b>（操作する人だけ入力）</div>
-    <input id="pinInput" type="password" placeholder="PIN">
-    <span class="small">※PINはブラウザに記憶されます</span>
+    <div class="topActions">
+      <button class="btn-ghost" onclick="loadAll()">最新に更新</button>
+      <span class="pill">少数アラート: <b id="alertBadge">3</b> 以下</span>
+    </div>
+  </header>
+
+  <div id="status" class="good">状態: 起動中…</div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="sectionTitle">
+        <h2>編集PIN</h2>
+        <div class="hint">※PINはブラウザに記憶されます</div>
+      </div>
+      <div class="row">
+        <div class="field" style="max-width:260px;">
+          <label>PIN（操作する人だけ入力）</label>
+          <input id="pinInput" type="password" placeholder="PIN" />
+        </div>
+        <button class="btn-ghost" onclick="clearSavedPin()">PINを忘れる</button>
+      </div>
+      <div class="muted" style="margin-top:10px;">
+        閲覧は誰でもOK / 編集はPIN入力が必要
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sectionTitle">
+        <h2>ユーザー名（履歴用）</h2>
+        <div class="hint">※未入力でもOK</div>
+      </div>
+      <div class="row">
+        <div class="field" style="max-width:260px;">
+          <label>履歴に残す名前</label>
+          <input id="userInput" placeholder="例：山田" />
+        </div>
+      </div>
+      <div class="muted" style="margin-top:10px;">
+        「誰が操作したか」を残したいときに入力
+      </div>
+    </div>
   </div>
+
+  <div class="grid" style="margin-top:12px;">
+    <div class="card">
+      <div class="sectionTitle">
+        <h2>入庫（手入力）</h2>
+        <div class="hint">商品名必須 / SKUは任意</div>
+      </div>
+
+      <div class="row actions">
+        <div class="field">
+          <label>SKU（任意）</label>
+          <input id="skuInput" placeholder="SKU（任意）" />
+        </div>
+        <div class="field">
+          <label>商品名（必須）</label>
+          <input id="nameInput" placeholder="商品名（必須）" />
+        </div>
+        <div class="field" style="max-width:160px;">
+          <label>数量</label>
+          <input id="qtyInput" type="number" placeholder="数量" />
+        </div>
+        <button class="btn-primary" onclick="addItemManual()">入庫</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sectionTitle">
+        <h2>CSV（ブラウザでアップロード）</h2>
+        <div class="hint">SKU or 商品名で照合 / 増減 & 上書き</div>
+      </div>
+
+      <div class="row actions" style="margin-bottom:10px;">
+        <button class="btn-ghost" onclick="exportStocksCSV()">在庫CSVエクスポート（バックアップ）</button>
+        <button class="btn-ghost" onclick="exportHistoryCSV()">履歴CSVエクスポート（バックアップ）</button>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <div style="font-weight:700;">在庫CSVインポート</div>
+        <input type="file" accept=".csv,text/csv" onchange="importStocksCSV(this)" />
+      </div>
+
+      <div class="muted" style="margin-top:8px; line-height:1.55;">
+        形式A（増減）：<code>sku,name,delta</code>（deltaは +/−）<br>
+        形式B（上書き）：<code>sku,name,qty</code><br>
+        ※skuが空ならnameで照合。qty=0は削除扱い。
+      </div>
+    </div>
+  </div>
+
+  <!-- 在庫一覧 -->
+  <div class="card tableCard" style="margin-top:12px;">
+    <div class="tableHeader">
+      <h2>在庫一覧</h2>
+      <div class="hint">少数在庫はハイライト（<= <span id="alertLabel">3</span>）</div>
+    </div>
+    <div class="tableWrap">
+      <table id="stockTable"></table>
+    </div>
+  </div>
+
+  <!-- 月次出庫集計 -->
+  <div class="card tableCard" style="margin-top:12px;">
+    <div class="tableHeader">
+      <h2>月次出庫集計</h2>
+      <div class="hint">history の「出庫」から算出</div>
+    </div>
+    <div class="tableWrap">
+      <table id="monthlyTable"></table>
+    </div>
+  </div>
+
+  <!-- 入出庫履歴 -->
+  <div class="card tableCard" style="margin-top:12px; margin-bottom:18px;">
+    <div class="tableHeader">
+      <h2>入出庫履歴</h2>
+      <div class="hint">最新が上</div>
+    </div>
+    <div class="tableWrap">
+      <table id="historyTable"></table>
+    </div>
+  </div>
+
 </div>
-
-<div class="box">
-  <div class="row">
-    <div>ユーザー名（履歴用）：</div>
-    <input id="userInput" placeholder="例：山田">
-    <span class="small">※未入力でもOK</span>
-  </div>
-</div>
-
-<div class="box">
-  <h2 style="margin:0 0 8px 0;">入庫（手入力）</h2>
-  <div class="row">
-    <input id="skuInput" placeholder="SKU（任意）">
-    <input id="nameInput" placeholder="商品名（必須）">
-    <input id="qtyInput" type="number" placeholder="数量">
-    <button onclick="addItemManual()">入庫</button>
-  </div>
-</div>
-
-<div class="box">
-  <h2 style="margin:0 0 8px 0;">CSV（ブラウザでアップロード）</h2>
-
-  <div class="row">
-    <button onclick="exportStocksCSV()">在庫CSVエクスポート（バックアップ）</button>
-    <button onclick="exportHistoryCSV()">履歴CSVエクスポート（バックアップ）</button>
-  </div>
-
-  <div class="row" style="margin-top:10px;">
-    <b>在庫CSVインポート（SKU or 商品名で照合 / 増減OK）</b>
-    <input type="file" accept=".csv,text/csv" onchange="importStocksCSV(this)">
-  </div>
-
-  <div class="small" style="margin-top:6px;">
-    形式A（増減）：<code>sku,name,delta</code>（deltaは +/−）<br>
-    形式B（上書き）：<code>sku,name,qty</code><br>
-    ※skuが空ならnameで照合。qty=0は削除扱い。
-  </div>
-</div>
-
-<h2>在庫一覧</h2>
-<table id="stockTable"></table>
-
-<h2>月次出庫集計</h2>
-<table id="monthlyTable"></table>
-
-<h2>入出庫履歴</h2>
-<table id="historyTable"></table>
 
 <script>
 /* ========= Supabase ========= */
@@ -119,6 +461,11 @@ function savePinOnChange() {
   const el = document.getElementById("pinInput");
   el.addEventListener("input", () => localStorage.setItem("inv_pin", el.value));
 }
+function clearSavedPin(){
+  localStorage.removeItem("inv_pin");
+  document.getElementById("pinInput").value = "";
+  setStatus("PINをクリアしました（閲覧のみ）", true);
+}
 function checkPin() {
   if (!EDIT_PIN) return true;
   const entered = (document.getElementById("pinInput").value || "").trim();
@@ -131,6 +478,10 @@ function checkPin() {
 
 /* ========= Load & Render ========= */
 window.onload = async () => {
+  // バッジ表示
+  document.getElementById("alertBadge").textContent = String(ALERT_QTY);
+  document.getElementById("alertLabel").textContent = String(ALERT_QTY);
+
   loadSavedPin();
   savePinOnChange();
   setStatus("読み込み中…");
@@ -138,6 +489,7 @@ window.onload = async () => {
 };
 
 async function loadAll() {
+  setStatus("読み込み中…");
   const s = await supabaseClient.from("stocks").select("*").order("name");
   if (s.error) return showErr("stocks 読み込み失敗", s.error);
 
@@ -152,21 +504,33 @@ async function loadAll() {
 
 function renderStocks(stocks) {
   const table = document.getElementById("stockTable");
-  table.innerHTML = "<tr><th>SKU</th><th>商品</th><th>数量</th><th>操作</th></tr>";
+  table.innerHTML = `
+    <tr>
+      <th style="width:160px;">SKU</th>
+      <th>商品</th>
+      <th style="width:120px; text-align:right;">数量</th>
+      <th style="width:260px;">操作</th>
+    </tr>`;
+
+  if (!stocks.length){
+    const tr = table.insertRow();
+    tr.innerHTML = `<td colspan="4" class="center muted">まだ在庫がありません</td>`;
+    return;
+  }
 
   stocks.forEach(s => {
     const qty = Number(s.qty || 0);
     const tr = table.insertRow();
-    if (qty <= ALERT_QTY) tr.className = "low";
+    if (qty <= ALERT_QTY) tr.classList.add("low-stock");
 
     tr.innerHTML = `
-      <td>${escapeHtml(s.sku || "")}</td>
+      <td class="muted">${escapeHtml(s.sku || "-")}</td>
       <td>${escapeHtml(s.name)}</td>
-      <td>${qty}</td>
+      <td class="qty">${qty}</td>
       <td>
-        <button onclick="shipItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">出庫</button>
-        <button onclick="editQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}', ${qty})">編集</button>
-        <button onclick="deleteItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">削除</button>
+        <button class="btn-primary btn-small" onclick="shipItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">出庫</button>
+        <button class="btn-ghost btn-small" onclick="editQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}', ${qty})">編集</button>
+        <button class="btn-danger btn-small" onclick="deleteItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">削除</button>
       </td>
     `;
   });
@@ -174,16 +538,31 @@ function renderStocks(stocks) {
 
 function renderHistory(history) {
   const table = document.getElementById("historyTable");
-  table.innerHTML = "<tr><th>日時</th><th>ユーザー</th><th>種別</th><th>SKU</th><th>商品</th><th>数量</th></tr>";
+  table.innerHTML = `
+    <tr>
+      <th style="width:190px;">日時</th>
+      <th style="width:120px;">ユーザー</th>
+      <th style="width:120px;">種別</th>
+      <th style="width:160px;">SKU</th>
+      <th>商品</th>
+      <th style="width:110px; text-align:right;">数量</th>
+    </tr>`;
+
+  if (!history.length){
+    const tr = table.insertRow();
+    tr.innerHTML = `<td colspan="6" class="center muted">まだ履歴がありません</td>`;
+    return;
+  }
+
   history.forEach(h => {
     const tr = table.insertRow();
     tr.innerHTML = `
-      <td>${escapeHtml(h.date)}</td>
+      <td class="muted">${escapeHtml(formatDate(h.date))}</td>
       <td>${escapeHtml(h.user)}</td>
       <td>${escapeHtml(h.type)}</td>
-      <td>${escapeHtml(h.sku || "")}</td>
+      <td class="muted">${escapeHtml(h.sku || "-")}</td>
       <td>${escapeHtml(h.name)}</td>
-      <td>${escapeHtml(String(h.qty))}</td>
+      <td class="qty">${escapeHtml(String(h.qty))}</td>
     `;
   });
 }
@@ -197,13 +576,21 @@ function renderMonthly(history) {
     map[ym] = (map[ym] || 0) + Number(h.qty || 0);
   });
 
-  table.innerHTML = "<tr><th>月</th><th>出庫数</th></tr>";
+  table.innerHTML = `
+    <tr>
+      <th style="width:160px;">月</th>
+      <th style="width:140px; text-align:right;">出庫数</th>
+    </tr>`;
+
   const keys = Object.keys(map).sort();
   if (!keys.length) {
-    table.insertRow().innerHTML = `<td colspan="2">まだ出庫履歴がありません</td>`;
+    table.insertRow().innerHTML = `<td colspan="2" class="center muted">まだ出庫履歴がありません</td>`;
     return;
   }
-  keys.forEach(ym => table.insertRow().innerHTML = `<td>${escapeHtml(ym)}</td><td>${map[ym]}</td>`);
+  keys.forEach(ym => {
+    const tr = table.insertRow();
+    tr.innerHTML = `<td>${escapeHtml(ym)}</td><td class="qty">${map[ym]}</td>`;
+  });
 }
 
 /* ========= 照合：SKU優先、なければ商品名 ========= */
@@ -224,6 +611,7 @@ async function addItemManual() {
   const sku = (document.getElementById("skuInput").value || "").trim();
   const name = (document.getElementById("nameInput").value || "").trim();
   const qty = Number(document.getElementById("qtyInput").value);
+
   if (!name || !qty) return alert("商品名と数量を入力してください");
 
   const ex = await findStockRow(sku, name);
@@ -250,6 +638,7 @@ async function addItemManual() {
   document.getElementById("skuInput").value = "";
   document.getElementById("nameInput").value = "";
   document.getElementById("qtyInput").value = "";
+
   await loadAll();
 }
 
@@ -289,6 +678,7 @@ async function editQty(sku, name, currentQty) {
 
   const input = prompt(`在庫数を変更（SKU: ${sku||"-"} / 商品: ${name}）\n現在: ${currentQty}\n新しい数量`, String(currentQty));
   if (input === null) return;
+
   const newQty = Number(input);
   if (!Number.isFinite(newQty) || newQty < 0) return alert("0以上の数字を入力してください");
 
@@ -415,7 +805,6 @@ async function importStocksCSV(inputEl) {
   const text = await file.text();
   const rows = parseCSV(text).map(r => r.map(c => (c ?? "").trim())).filter(r => r.length >= 2);
 
-  // ヘッダー判定（sku,name,delta or sku,name,qty or name,qty）
   const header = rows[0].map(x => x.toLowerCase());
   const hasHeader = header.includes("name") || header.includes("sku") || header.includes("qty") || header.includes("delta");
 
@@ -432,15 +821,14 @@ async function importStocksCSV(inputEl) {
     else { mode="set"; idxValue = iQty !== -1 ? iQty : 2; }
     dataRows = rows.slice(1);
   } else {
-    // ヘッダー無しの場合：2列なら name,qty（set）/ 3列なら sku,name,qty（set）
     mode = "set";
     if (rows[0].length === 2) { idxSku = -1; idxName = 0; idxValue = 1; }
     else { idxSku = 0; idxName = 1; idxValue = 2; }
   }
 
-  // 既存をまとめて取得してMap化（速度用）
   const existing = await supabaseClient.from("stocks").select("*");
   if (existing.error) return showErr("既存在庫取得失敗", existing.error);
+
   const bySku = new Map((existing.data||[]).filter(x=>x.sku).map(x => [x.sku, x]));
   const byName = new Map((existing.data||[]).map(x => [x.name, x]));
 
@@ -456,9 +844,9 @@ async function importStocksCSV(inputEl) {
     const found = sku ? bySku.get(sku) : byName.get(name);
 
     if (!found) {
-      // 無ければ新規
       const startQty = mode === "delta" ? num : num;
       if (startQty <= 0) continue;
+
       const ins = await supabaseClient.from("stocks").insert({ sku: sku || null, name: name || "(no name)", qty: startQty });
       if (ins.error) return showErr(`CSV insert失敗（${sku||name}）`, ins.error);
 
@@ -474,7 +862,6 @@ async function importStocksCSV(inputEl) {
       continue;
     }
 
-    // 既存あり：更新
     let newQty;
     if (mode === "delta") newQty = Number(found.qty) + num;
     else newQty = num;
@@ -503,7 +890,17 @@ async function importStocksCSV(inputEl) {
   alert("CSVインポート完了");
 }
 
-/* ========= escaping ========= */
+/* ========= formatting / escaping ========= */
+function formatDate(iso){
+  try{
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    const pad = (n)=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }catch(e){
+    return String(iso);
+  }
+}
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -516,5 +913,6 @@ function escapeJs(s) {
   return String(s ?? "").replaceAll("\\","\\\\").replaceAll("'","\\'").replaceAll("\n"," ").replaceAll("\r"," ");
 }
 </script>
+
 </body>
 </html>
