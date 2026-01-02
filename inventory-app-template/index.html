@@ -20,16 +20,19 @@
     input {
       padding: 6px;
       margin-right: 5px;
+      width: 120px;
     }
 
     button {
-      padding: 6px 12px;
+      padding: 6px 10px;
+      margin-right: 4px;
       cursor: pointer;
     }
 
     table {
       border-collapse: collapse;
-      width: 400px;
+      width: 700px;
+      margin-bottom: 30px;
     }
 
     th, td {
@@ -41,86 +44,164 @@
     th {
       background: #f0f0f0;
     }
+
+    .low {
+      background: #ffe5e5;
+      color: #c00;
+      font-weight: bold;
+    }
+
+    h2 {
+      margin-top: 40px;
+    }
   </style>
 </head>
 <body>
 
-  <h1>在庫管理システム</h1>
+<h1>在庫管理システム</h1>
 
-  <!-- 入力フォーム -->
-  <div class="form">
-    <input id="nameInput" type="text" placeholder="商品名">
-    <input id="qtyInput" type="number" placeholder="数量">
-    <button onclick="addItem()">追加</button>
-  </div>
+<!-- 入力フォーム -->
+<div class="form">
+  <input id="nameInput" type="text" placeholder="商品名">
+  <input id="qtyInput" type="number" placeholder="数量">
+  <button onclick="addItem()">入庫</button>
+</div>
 
-  <!-- 在庫一覧 -->
-  <table id="stockTable">
-    <tr>
-      <th>商品名</th>
-      <th>数量</th>
-    </tr>
-  </table>
+<!-- 在庫一覧 -->
+<table id="stockTable">
+  <tr>
+    <th>商品名</th>
+    <th>数量</th>
+    <th>操作</th>
+  </tr>
+</table>
 
-  <script>
-    // 在庫データ（ここが本体）
-    let stocks = [];
+<h2>入出庫履歴</h2>
 
-    // ページ読み込み時：保存データを復元
-    window.onload = function () {
-      const saved = localStorage.getItem("stocks");
-      if (saved) {
-        stocks = JSON.parse(saved);
-        renderTable();
-      }
-    };
+<table id="historyTable">
+  <tr>
+    <th>日時</th>
+    <th>商品名</th>
+    <th>種別</th>
+    <th>数量</th>
+  </tr>
+</table>
 
-    // 追加ボタン
-    function addItem() {
-      const name = document.getElementById("nameInput").value;
-      const qty = document.getElementById("qtyInput").value;
+<script>
+  let stocks = [];
+  let history = [];
+  const ALERT_QTY = 3;
 
-      if (!name || !qty) {
-        alert("商品名と数量を入力してください");
-        return;
-      }
+  window.onload = function () {
+    stocks = JSON.parse(localStorage.getItem("stocks") || "[]");
+    history = JSON.parse(localStorage.getItem("history") || "[]");
+    renderStocks();
+    renderHistory();
+  };
 
-      stocks.push({
-        name: name,
-        qty: Number(qty)
-      });
+  function save() {
+    localStorage.setItem("stocks", JSON.stringify(stocks));
+    localStorage.setItem("history", JSON.stringify(history));
+  }
 
-      saveData();
-      renderTable();
+  function addItem() {
+    const name = nameInput.value;
+    const qty = Number(qtyInput.value);
 
-      document.getElementById("nameInput").value = "";
-      document.getElementById("qtyInput").value = "";
+    if (!name || !qty) {
+      alert("商品名と数量を入力してください");
+      return;
     }
 
-    // 表を描き直す
-    function renderTable() {
-      const table = document.getElementById("stockTable");
+    const item = stocks.find(s => s.name === name);
+    if (item) {
+      item.qty += qty;
+    } else {
+      stocks.push({ name, qty });
+    }
 
-      // 表を初期化（ヘッダー以外削除）
-      table.innerHTML = `
-        <tr>
-          <th>商品名</th>
-          <th>数量</th>
-        </tr>
+    addHistory(name, "入庫", qty);
+    save();
+    renderStocks();
+
+    nameInput.value = "";
+    qtyInput.value = "";
+  }
+
+  function shipItem(name) {
+    const item = stocks.find(s => s.name === name);
+    if (!item || item.qty <= 0) return;
+
+    item.qty -= 1;
+    addHistory(name, "出庫", 1);
+
+    if (item.qty === 0) {
+      stocks = stocks.filter(s => s.qty > 0);
+    }
+
+    save();
+    renderStocks();
+  }
+
+  function deleteItem(name) {
+    stocks = stocks.filter(s => s.name !== name);
+    addHistory(name, "削除", "-");
+    save();
+    renderStocks();
+  }
+
+  function renderStocks() {
+    stockTable.innerHTML = `
+      <tr>
+        <th>商品名</th>
+        <th>数量</th>
+        <th>操作</th>
+      </tr>
+    `;
+
+    stocks.forEach(item => {
+      const row = stockTable.insertRow();
+      row.className = item.qty <= ALERT_QTY ? "low" : "";
+
+      row.insertCell().textContent = item.name;
+      row.insertCell().textContent = item.qty;
+
+      const actions = row.insertCell();
+      actions.innerHTML = `
+        <button onclick="shipItem('${item.name}')">出庫</button>
+        <button onclick="deleteItem('${item.name}')">削除</button>
       `;
+    });
+  }
 
-      stocks.forEach(item => {
-        const row = table.insertRow();
-        row.insertCell().textContent = item.name;
-        row.insertCell().textContent = item.qty;
-      });
-    }
+  function addHistory(name, type, qty) {
+    history.unshift({
+      date: new Date().toLocaleString(),
+      name,
+      type,
+      qty
+    });
+  }
 
-    // 保存
-    function saveData() {
-      localStorage.setItem("stocks", JSON.stringify(stocks));
-    }
-  </script>
+  function renderHistory() {
+    historyTable.innerHTML = `
+      <tr>
+        <th>日時</th>
+        <th>商品名</th>
+        <th>種別</th>
+        <th>数量</th>
+      </tr>
+    `;
+
+    history.forEach(h => {
+      const row = historyTable.insertRow();
+      row.insertCell().textContent = h.date;
+      row.insertCell().textContent = h.name;
+      row.insertCell().textContent = h.type;
+      row.insertCell().textContent = h.qty;
+    });
+  }
+</script>
 
 </body>
 </html>
