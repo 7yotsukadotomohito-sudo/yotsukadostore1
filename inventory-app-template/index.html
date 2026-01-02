@@ -37,7 +37,7 @@
   *{ box-sizing:border-box; }
   body{
     margin:0;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Helvetica Neue", Arial;
     color:var(--text);
     background:var(--bg);
   }
@@ -50,7 +50,7 @@
   }
 
   .container{
-    max-width: 1180px;
+    max-width: 1240px;
     margin: 0 auto;
     padding: 18px;
   }
@@ -128,14 +128,8 @@
     margin-bottom: 12px;
     font-size: 13px;
   }
-  #status.good{
-    background: var(--goodBg);
-    border-color: var(--goodLine);
-  }
-  #status.bad{
-    background: var(--badBg);
-    border-color: var(--badLine);
-  }
+  #status.good{ background: var(--goodBg); border-color: var(--goodLine); }
+  #status.bad{ background: var(--badBg); border-color: var(--badLine); }
 
   .row{
     display:flex;
@@ -217,36 +211,53 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* ★ 表っぽく区切る：罫線 & セル境界 */
   table{
     width: 100%;
     border-collapse: collapse;
-    min-width: 1060px;
+    min-width: 1180px;
     background: #fff;
+    border: 1px solid var(--line);
   }
   th, td{
     padding: 12px 12px;
-    border-bottom: 1px solid #f0f1f4;
     text-align: left;
     font-size: 14px;
+    border: 1px solid var(--line);
+    vertical-align: top;
   }
   th{
     background: #fafafa;
     color:#374151;
-    font-weight: 700;
+    font-weight: 800;
     position: sticky;
     top: 0;
     z-index: 1;
   }
+
   td.qty{
     text-align: right;
     font-variant-numeric: tabular-nums;
-    font-weight: 700;
+    font-weight: 800;
+    white-space: nowrap;
   }
   td.center{ text-align:center; }
   .muted{ color:var(--muted); font-size: 12px; }
+
   tr.low-stock td{
     background: var(--lowBg);
     color: var(--lowText);
+  }
+
+  /* ★ 商品名が2文字で折れる問題対策：列幅を確保＋折り返し/フォント */
+  td.nameCell{
+    min-width: 340px;      /* ここで「10文字くらい」を出せる */
+    max-width: 520px;
+    white-space: normal;   /* 折り返し可 */
+    word-break: break-word;
+    font-size: 13px;       /* 少しだけ小さく */
+    line-height: 1.35;
   }
 
   .pill{
@@ -265,7 +276,7 @@
     .topActions{ width:100%; justify-content:flex-start; }
     .row.actions{ flex-direction: column; align-items: stretch; }
     .row.actions button{ width: 100%; }
-    table{ min-width: 1300px; }
+    table{ min-width: 1280px; }
   }
 </style>
 </head>
@@ -276,7 +287,7 @@
   <header>
     <div class="title">
       <h1>在庫管理システム</h1>
-      <div class="subtitle">UI v5（反映確認用） / SKU別アラート閾値 + 不足差分表示 + 不足CSV出力</div>
+      <div class="subtitle">UI v6（反映確認用） / 罫線テーブル / 商品名見やすく / 棚卸CSV / 在庫数CSV</div>
     </div>
 
     <div class="topActions">
@@ -355,33 +366,52 @@
 
     <div class="card">
       <div class="sectionTitle">
-        <h2>CSV（ブラウザでアップロード）</h2>
-        <div class="hint">SKU or 商品名で照合 / 増減 & 上書き / alert_qty対応</div>
+        <h2>CSV / メンテ</h2>
+        <div class="hint">バックアップ・棚卸・不足リスト</div>
       </div>
 
       <div class="row actions" style="margin-bottom:10px;">
-        <button class="btn-ghost" onclick="exportStocksCSV()">在庫CSVエクスポート（バックアップ）</button>
-        <button class="btn-ghost" onclick="exportHistoryCSV()">履歴CSVエクスポート（バックアップ）</button>
-        <button class="btn-primary" onclick="exportLowStockCSV()">不足（アラート対象）CSV出力</button>
+        <button class="btn-ghost" onclick="exportStocksCSV()">在庫CSV（詳細）</button>
+        <button class="btn-ghost" onclick="exportSkuQtyCSV()">在庫数CSV（sku,qty）</button>
+        <button class="btn-ghost" onclick="exportHistoryCSV()">履歴CSV</button>
+        <button class="btn-primary" onclick="exportLowStockCSV()">不足（アラート対象）CSV</button>
       </div>
 
-      <div class="row" style="margin-top:10px;">
-        <div style="font-weight:700;">在庫CSVインポート</div>
-        <input type="file" accept=".csv,text/csv" onchange="importStocksCSV(this)" />
+      <div class="row actions" style="margin-top:10px;">
+        <button class="btn-ghost" onclick="bulkFillAlertQty()">未設定のalert_qtyを一括で既定値にする</button>
+        <span class="muted">（既定: <b id="alertLabel">3</b>）</span>
       </div>
 
-      <div class="muted" style="margin-top:8px; line-height:1.55;">
-        形式A（増減）：<code>sku,name,delta,alert_qty</code>（alert_qtyは任意）<br>
-        形式B（上書き）：<code>sku,name,qty,alert_qty</code>（alert_qtyは任意）<br>
-        ※skuが空ならnameで照合。qty=0は削除扱い。alert_qty空欄は既存のまま（新規は既定）。
+      <div style="margin-top:14px; border-top:1px dashed var(--line); padding-top:12px;">
+        <div style="font-weight:800; margin-bottom:6px;">在庫CSVインポート（増減/上書き）</div>
+        <div class="row">
+          <input type="file" accept=".csv,text/csv" onchange="importStocksCSV(this)" />
+        </div>
+        <div class="muted" style="margin-top:8px; line-height:1.55;">
+          形式A（増減）：<code>sku,name,delta,alert_qty</code><br>
+          形式B（上書き）：<code>sku,name,qty,alert_qty</code><br>
+          ※skuが空ならname照合。qty=0は削除扱い。alert_qty空欄は既存維持（新規は既定）。
+        </div>
       </div>
+
+      <div style="margin-top:14px; border-top:1px dashed var(--line); padding-top:12px;">
+        <div style="font-weight:800; margin-bottom:6px;">棚卸CSVインポート（実在個で上書き）</div>
+        <div class="row">
+          <input type="file" accept=".csv,text/csv" onchange="importStocktakeCSV(this)" />
+        </div>
+        <div class="muted" style="margin-top:8px; line-height:1.55;">
+          形式：<code>sku,qty</code>（ヘッダあり/なし両対応）<br>
+          ※CSVにあるSKUだけ在庫を上書きします（差分は履歴に <code>棚卸</code> として記録）。
+        </div>
+      </div>
+
     </div>
   </div>
 
   <div class="card tableCard" style="margin-top:12px;">
     <div class="tableHeader">
       <h2>在庫一覧</h2>
-      <div class="hint">SKU昇順 / 少数在庫はハイライト（SKU別閾値、未設定は既定：<span id="alertLabel">3</span>）</div>
+      <div class="hint">SKU昇順 / 少数在庫はハイライト（SKU別閾値、未設定は既定）</div>
     </div>
     <div class="tableWrap">
       <table id="stockTable"></table>
@@ -401,7 +431,7 @@
   <div class="card tableCard" style="margin-top:12px; margin-bottom:18px;">
     <div class="tableHeader">
       <h2>入出庫履歴</h2>
-      <div class="hint">東京時間（JST）で表示 / 最新が上</div>
+      <div class="hint">東京時間（JST） / 最新が上</div>
     </div>
     <div class="tableWrap">
       <table id="historyTable"></table>
@@ -494,14 +524,13 @@ window.onload = async () => {
 
 async function loadAll() {
   setStatus("読み込み中…");
-
   const s = await supabaseClient.from("stocks").select("*").order("sku");
   if (s.error) return showErr("stocks 読み込み失敗", s.error);
 
   const h = await supabaseClient.from("history").select("*").order("date", { ascending: false });
   if (h.error) return showErr("history 読み込み失敗", h.error);
 
-  window.__stocks_cache__ = (s.data || []); // 不足CSV用にキャッシュ
+  window.__stocks_cache__ = (s.data || []);
   renderStocks(window.__stocks_cache__);
   renderHistory(h.data || []);
   renderMonthly(h.data || []);
@@ -512,12 +541,12 @@ function renderStocks(stocks) {
   const table = document.getElementById("stockTable");
   table.innerHTML = `
     <tr>
-      <th style="width:160px;">SKU</th>
-      <th>商品</th>
-      <th style="width:120px; text-align:right;">数量</th>
-      <th style="width:130px; text-align:right;">アラート</th>
-      <th style="width:120px; text-align:right;">差</th>
-      <th style="width:560px;">操作</th>
+      <th style="width:170px;">SKU</th>
+      <th style="min-width:340px;">商品</th>
+      <th style="width:110px; text-align:right;">数量</th>
+      <th style="width:120px; text-align:right;">アラート</th>
+      <th style="width:80px; text-align:right;">差</th>
+      <th style="width:520px;">操作</th>
     </tr>`;
 
   if (!stocks.length){
@@ -538,7 +567,7 @@ function renderStocks(stocks) {
 
     tr.innerHTML = `
       <td class="muted">${escapeHtml(s.sku || "")}</td>
-      <td>${escapeHtml(s.name || "")}</td>
+      <td class="nameCell">${escapeHtml(s.name || "")}</td>
       <td class="qty">${qty}</td>
       <td class="qty">${escapeHtml(alertLabel)}</td>
       <td class="qty">${shortage}</td>
@@ -578,7 +607,7 @@ function renderHistory(history) {
       <td>${escapeHtml(h.user)}</td>
       <td>${escapeHtml(h.type)}</td>
       <td class="muted">${escapeHtml(h.sku || "")}</td>
-      <td>${escapeHtml(h.name || "")}</td>
+      <td class="nameCell">${escapeHtml(h.name || "")}</td>
       <td class="qty">${escapeHtml(String(h.qty))}</td>
     `;
   });
@@ -608,6 +637,36 @@ function renderMonthly(history) {
     const tr = table.insertRow();
     tr.innerHTML = `<td>${escapeHtml(ym)}</td><td class="qty">${map[ym]}</td>`;
   });
+}
+
+/* ========= 一括：alert_qty 未設定を既定値へ ========= */
+async function bulkFillAlertQty(){
+  if (!checkPin()) return;
+
+  const ok = confirm(`alert_qty が未設定のSKUに、既定値(${DEFAULT_ALERT_QTY})を一括設定します。OK？`);
+  if (!ok) return;
+
+  setStatus("一括更新中…", true);
+
+  const r = await supabaseClient
+    .from("stocks")
+    .update({ alert_qty: DEFAULT_ALERT_QTY })
+    .is("alert_qty", null);
+
+  if (r.error) return showErr("alert_qty 一括更新失敗", r.error);
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "alert_qty一括設定",
+    sku: null,
+    name: "",
+    qty: 0
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+  alert("未設定のalert_qtyを既定値にしました");
 }
 
 /* ========= 照合：SKU優先、なければ商品名 ========= */
@@ -764,17 +823,11 @@ async function editItemInfo(oldSku, oldName) {
   const alertVal = normalizeAlertInput(newAlertRaw);
   if (alertVal && alertVal.error) return alert(alertVal.error);
 
-  // SKU重複チェック（UX用）
   const dup = await supabaseClient.from("stocks").select("id").eq("sku", newSku.trim()).maybeSingle();
   if (dup.error) return showErr("SKU重複チェック失敗", dup.error);
   if (dup.data && dup.data.id !== ex.data.id) return alert(`SKU「${newSku.trim()}」は既に存在します。別のSKUにしてください。`);
 
-  const payload = {
-    sku: newSku.trim(),
-    name: (newName || "").trim(),
-    alert_qty: (alertVal === null) ? null : alertVal
-  };
-
+  const payload = { sku: newSku.trim(), name: (newName || "").trim(), alert_qty: (alertVal === null) ? null : alertVal };
   const up = await supabaseClient.from("stocks").update(payload).eq("id", ex.data.id);
   if (up.error) return showErr("stocks update 失敗", up.error);
 
@@ -871,6 +924,7 @@ function csvEscape(v) {
   return s;
 }
 
+/* 詳細（既存） */
 async function exportStocksCSV() {
   const s = await supabaseClient.from("stocks").select("*").order("sku");
   if (s.error) return showErr("在庫CSV取得失敗", s.error);
@@ -878,10 +932,23 @@ async function exportStocksCSV() {
   let csv = "sku,name,qty,alert_qty,shortage\n";
   (s.data || []).forEach(r => {
     const aq = (r.alert_qty === null || r.alert_qty === undefined) ? "" : String(r.alert_qty);
-    const sh = Math.max(0, (Number(aq === "" ? DEFAULT_ALERT_QTY : aq) - Number(r.qty || 0)));
-    csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty)},${csvEscape(aq)},${sh}\n`;
+    const alertNum = (aq === "") ? DEFAULT_ALERT_QTY : Number(aq);
+    const sh = Math.max(0, alertNum - Number(r.qty || 0));
+    csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty||0)},${csvEscape(aq)},${sh}\n`;
   });
   downloadText(`stocks_${todayStr()}.csv`, csv);
+}
+
+/* ★ 全SKUの在庫数だけ（今回追加） */
+async function exportSkuQtyCSV(){
+  const s = await supabaseClient.from("stocks").select("sku,qty").order("sku");
+  if (s.error) return showErr("在庫数CSV取得失敗", s.error);
+
+  let csv = "sku,qty\n";
+  (s.data || []).forEach(r => {
+    csv += `${csvEscape(r.sku||"")},${Number(r.qty||0)}\n`;
+  });
+  downloadText(`sku_qty_${todayStr()}.csv`, csv);
 }
 
 function exportLowStockCSV(){
@@ -911,7 +978,7 @@ async function exportHistoryCSV() {
   downloadText(`history_${todayStr()}.csv`, csv);
 }
 
-/* ========= CSV Import（SKU or Name / delta or qty） + レポート ========= */
+/* ========= CSV Import（増減/上書き） ========= */
 function parseCSV(text) {
   const rows = [];
   let row = [];
@@ -1086,7 +1153,131 @@ async function importStocksCSV(inputEl) {
   }
 }
 
-/* ========= 日時: 東京時間（JST）で表示 ========= */
+/* ========= 棚卸CSV（sku,qty）で上書き ========= */
+async function importStocktakeCSV(inputEl){
+  if (!checkPin()) { inputEl.value = ""; return; }
+  const file = inputEl.files?.[0];
+  if (!file) return;
+
+  const text = await file.text();
+  const rows = parseCSV(text).map(r => r.map(c => (c ?? "").trim())).filter(r => r.length >= 2);
+  if (!rows.length) { alert("CSVが空です"); inputEl.value = ""; return; }
+
+  const header = rows[0].map(x => x.toLowerCase());
+  const hasHeader = header.includes("sku") || header.includes("qty");
+  let dataRows = rows;
+  let idxSku = 0, idxQty = 1;
+
+  if (hasHeader){
+    idxSku = header.indexOf("sku");
+    idxQty = header.indexOf("qty");
+    if (idxSku === -1) idxSku = 0;
+    if (idxQty === -1) idxQty = 1;
+    dataRows = rows.slice(1);
+  }else{
+    idxSku = 0; idxQty = 1;
+  }
+
+  const existing = await supabaseClient.from("stocks").select("*");
+  if (existing.error) return showErr("既存在庫取得失敗", existing.error);
+
+  const bySku = new Map((existing.data||[]).filter(x=>x.sku).map(x => [x.sku, x]));
+
+  let processed = 0, updated = 0, inserted = 0, skipped = 0;
+  const errors = [];
+  const pushError = (line, msg) => errors.push(`行${line}: ${msg}`);
+
+  setStatus("棚卸取り込み中…", true);
+
+  for (let i=0; i<dataRows.length; i++){
+    const r = dataRows[i];
+    const lineNo = hasHeader ? (i + 2) : (i + 1);
+
+    const sku = (r[idxSku] || "").trim();
+    const qtyRaw = (r[idxQty] || "").trim();
+    if (!sku) { skipped++; continue; }
+
+    const qty = Number(qtyRaw);
+    if (!Number.isFinite(qty) || qty < 0){
+      skipped++; pushError(lineNo, `qtyが不正（"${qtyRaw}"）`); continue;
+    }
+
+    const found = bySku.get(sku);
+    if (!found){
+      // 見つからないSKUは新規追加（商品名なしでOK）
+      if (qty <= 0) { skipped++; continue; }
+      const ins = await supabaseClient.from("stocks").insert({ sku, name: "", qty });
+      if (ins.error){ pushError(lineNo, `insert失敗: ${ins.error.message}`); continue; }
+      inserted++; processed++;
+
+      const hin = await supabaseClient.from("history").insert({
+        date: new Date().toISOString(),
+        user: currentUser(),
+        type: "棚卸（新規）",
+        sku,
+        name: "",
+        qty
+      });
+      if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
+      continue;
+    }
+
+    // 既存SKU：qtyを上書き
+    const before = Number(found.qty || 0);
+    if (before === qty) { processed++; continue; }
+
+    if (qty === 0){
+      // 0は削除扱い
+      const del = await supabaseClient.from("stocks").delete().eq("id", found.id);
+      if (del.error){ pushError(lineNo, `delete失敗: ${del.error.message}`); continue; }
+      updated++; processed++;
+
+      const hin = await supabaseClient.from("history").insert({
+        date: new Date().toISOString(),
+        user: currentUser(),
+        type: "棚卸（削除）",
+        sku,
+        name: found.name || "",
+        qty: Math.abs(before - qty)
+      });
+      if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
+      continue;
+    }
+
+    const up = await supabaseClient.from("stocks").update({ qty }).eq("id", found.id);
+    if (up.error){ pushError(lineNo, `update失敗: ${up.error.message}`); continue; }
+    updated++; processed++;
+
+    const hin = await supabaseClient.from("history").insert({
+      date: new Date().toISOString(),
+      user: currentUser(),
+      type: "棚卸",
+      sku,
+      name: found.name || "",
+      qty: Math.abs(before - qty)
+    });
+    if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
+  }
+
+  inputEl.value = "";
+  await loadAll();
+
+  const summary =
+`棚卸CSV完了
+処理: ${processed}（update:${updated} / insert:${inserted}）
+スキップ: ${skipped}
+エラー: ${errors.length}`;
+
+  if (errors.length){
+    alert(summary + "\n\n--- エラー詳細（最大20件） ---\n" + errors.slice(0,20).join("\n"));
+    setStatus(`棚卸完了（エラー ${errors.length}件）`, false);
+  }else{
+    alert(summary);
+    setStatus("棚卸完了（エラーなし）", true);
+  }
+}
+
+/* ========= 日時: 東京時間（JST） ========= */
 function formatDate(iso){
   try{
     const d = new Date(iso);
