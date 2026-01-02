@@ -42,7 +42,6 @@
     background:var(--bg);
   }
 
-  a{ color:var(--primary); }
   code{
     background:#f3f4f6;
     padding:2px 6px;
@@ -121,7 +120,6 @@
     font-size: 12px;
   }
 
-  /* Status */
   #status{
     padding: 10px 12px;
     border-radius: 12px;
@@ -139,7 +137,6 @@
     border-color: var(--badLine);
   }
 
-  /* Form */
   .row{
     display:flex;
     gap: 10px;
@@ -177,7 +174,6 @@
     padding: 10px 0;
   }
 
-  /* Buttons */
   button{
     border: none;
     border-radius: 12px;
@@ -206,7 +202,6 @@
     font-size: 13px;
   }
 
-  /* Tables */
   .tableCard{ padding: 0; overflow: hidden; }
   .tableHeader{
     padding: 12px 14px;
@@ -268,7 +263,6 @@
     background:#fff;
   }
 
-  /* Mobile helpers */
   @media (max-width: 600px){
     .topActions{
       width:100%;
@@ -282,7 +276,7 @@
       width: 100%;
     }
     table{
-      min-width: 920px; /* 横スクロール前提 */
+      min-width: 980px;
     }
   }
 </style>
@@ -294,7 +288,7 @@
   <header>
     <div class="title">
       <h1>在庫管理システム</h1>
-      <div class="subtitle">UI v2（反映確認用） / URLで即利用 / 編集はPINで制御（ログインなし）</div>
+      <div class="subtitle">UI v3（反映確認用） / URLで即利用 / 編集はPINで制御（ログインなし）</div>
     </div>
 
     <div class="topActions">
@@ -344,23 +338,26 @@
     <div class="card">
       <div class="sectionTitle">
         <h2>入庫（手入力）</h2>
-        <div class="hint">商品名必須 / SKUは任意</div>
+        <div class="hint">SKU必須 / 商品名は任意</div>
       </div>
 
       <div class="row actions">
         <div class="field">
-          <label>SKU（任意）</label>
-          <input id="skuInput" placeholder="SKU（任意）" />
+          <label>SKU（必須）</label>
+          <input id="skuInput" placeholder="SKU（必須）" />
         </div>
         <div class="field">
-          <label>商品名（必須）</label>
-          <input id="nameInput" placeholder="商品名（必須）" />
+          <label>商品名（任意）</label>
+          <input id="nameInput" placeholder="商品名（任意）" />
         </div>
         <div class="field" style="max-width:160px;">
           <label>数量</label>
           <input id="qtyInput" type="number" placeholder="数量" />
         </div>
         <button class="btn-primary" onclick="addItemManual()">入庫</button>
+      </div>
+      <div class="muted" style="margin-top:8px;">
+        SKUが既に存在する場合は在庫を加算（商品名入力があれば更新）
       </div>
     </div>
 
@@ -388,18 +385,16 @@
     </div>
   </div>
 
-  <!-- 在庫一覧 -->
   <div class="card tableCard" style="margin-top:12px;">
     <div class="tableHeader">
       <h2>在庫一覧</h2>
-      <div class="hint">少数在庫はハイライト（≤ <span id="alertLabel">3</span>）</div>
+      <div class="hint">SKU昇順 / 少数在庫はハイライト（≤ <span id="alertLabel">3</span>）</div>
     </div>
     <div class="tableWrap">
       <table id="stockTable"></table>
     </div>
   </div>
 
-  <!-- 月次出庫集計 -->
   <div class="card tableCard" style="margin-top:12px;">
     <div class="tableHeader">
       <h2>月次出庫集計</h2>
@@ -410,7 +405,6 @@
     </div>
   </div>
 
-  <!-- 入出庫履歴 -->
   <div class="card tableCard" style="margin-top:12px; margin-bottom:18px;">
     <div class="tableHeader">
       <h2>入出庫履歴</h2>
@@ -489,7 +483,9 @@ window.onload = async () => {
 
 async function loadAll() {
   setStatus("読み込み中…");
-  const s = await supabaseClient.from("stocks").select("*").order("name");
+
+  // ★ SKU昇順
+  const s = await supabaseClient.from("stocks").select("*").order("sku");
   if (s.error) return showErr("stocks 読み込み失敗", s.error);
 
   const h = await supabaseClient.from("history").select("*").order("date", { ascending: false });
@@ -508,7 +504,7 @@ function renderStocks(stocks) {
       <th style="width:160px;">SKU</th>
       <th>商品</th>
       <th style="width:120px; text-align:right;">数量</th>
-      <th style="width:380px;">操作</th>
+      <th style="width:520px;">操作</th>
     </tr>`;
 
   if (!stocks.length){
@@ -523,14 +519,15 @@ function renderStocks(stocks) {
     if (qty <= ALERT_QTY) tr.classList.add("low-stock");
 
     tr.innerHTML = `
-      <td class="muted">${escapeHtml(s.sku || "-")}</td>
-      <td>${escapeHtml(s.name)}</td>
+      <td class="muted">${escapeHtml(s.sku || "")}</td>
+      <td>${escapeHtml(s.name || "")}</td>
       <td class="qty">${qty}</td>
       <td>
-        <button class="btn-primary btn-small" onclick="shipItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">出庫(-1)</button>
-        <button class="btn-ghost btn-small" onclick="shipItemQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">数量出庫</button>
-        <button class="btn-ghost btn-small" onclick="editQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}', ${qty})">編集</button>
-        <button class="btn-danger btn-small" onclick="deleteItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">削除</button>
+        <button class="btn-primary btn-small" onclick="shipItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">出庫(-1)</button>
+        <button class="btn-ghost btn-small" onclick="shipItemQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">数量出庫</button>
+        <button class="btn-ghost btn-small" onclick="editItemInfo('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">SKU/商品名編集</button>
+        <button class="btn-ghost btn-small" onclick="editQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}', ${qty})">在庫編集</button>
+        <button class="btn-danger btn-small" onclick="deleteItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">削除</button>
       </td>
     `;
   });
@@ -542,7 +539,7 @@ function renderHistory(history) {
     <tr>
       <th style="width:190px;">日時（JST）</th>
       <th style="width:120px;">ユーザー</th>
-      <th style="width:120px;">種別</th>
+      <th style="width:140px;">種別</th>
       <th style="width:160px;">SKU</th>
       <th>商品</th>
       <th style="width:110px; text-align:right;">数量</th>
@@ -560,8 +557,8 @@ function renderHistory(history) {
       <td class="muted">${escapeHtml(formatDate(h.date))}</td>
       <td>${escapeHtml(h.user)}</td>
       <td>${escapeHtml(h.type)}</td>
-      <td class="muted">${escapeHtml(h.sku || "-")}</td>
-      <td>${escapeHtml(h.name)}</td>
+      <td class="muted">${escapeHtml(h.sku || "")}</td>
+      <td>${escapeHtml(h.name || "")}</td>
       <td class="qty">${escapeHtml(String(h.qty))}</td>
     `;
   });
@@ -596,32 +593,40 @@ function renderMonthly(history) {
 /* ========= 照合：SKU優先、なければ商品名 ========= */
 async function findStockRow(sku, name) {
   if (sku) {
-    const r = await supabaseClient.from("stocks").select("*").eq("sku", sku).maybeSingle();
-    return r;
-  } else {
-    const r = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
-    return r;
+    return await supabaseClient.from("stocks").select("*").eq("sku", sku).maybeSingle();
   }
+  return await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
 }
 
-/* ========= 手入力入庫 ========= */
+/* ========= 手入力入庫（SKU必須） ========= */
 async function addItemManual() {
   if (!checkPin()) return;
 
   const sku = (document.getElementById("skuInput").value || "").trim();
-  const name = (document.getElementById("nameInput").value || "").trim();
+  const name = (document.getElementById("nameInput").value || "").trim(); // 任意
   const qty = Number(document.getElementById("qtyInput").value);
 
-  if (!name || !qty) return alert("商品名と数量を入力してください");
+  if (!sku || !qty) return alert("SKUと数量は必須です");
 
   const ex = await findStockRow(sku, name);
   if (ex.error) return showErr("stocks 既存チェック失敗", ex.error);
 
   if (ex.data) {
-    const up = await supabaseClient.from("stocks").update({ qty: Number(ex.data.qty) + qty }).eq("id", ex.data.id);
+    const newQty = Number(ex.data.qty || 0) + qty;
+    const newName = name ? name : (ex.data.name || ""); // 入力があれば更新
+
+    const up = await supabaseClient
+      .from("stocks")
+      .update({ qty: newQty, name: newName })
+      .eq("id", ex.data.id);
+
     if (up.error) return showErr("stocks update 失敗", up.error);
   } else {
-    const ins = await supabaseClient.from("stocks").insert({ sku: sku || null, name, qty });
+    const ins = await supabaseClient.from("stocks").insert({
+      sku,
+      name: name || "",
+      qty
+    });
     if (ins.error) return showErr("stocks insert 失敗", ins.error);
   }
 
@@ -629,8 +634,8 @@ async function addItemManual() {
     date: new Date().toISOString(),
     user: currentUser(),
     type: "入庫",
-    sku: sku || null,
-    name,
+    sku,
+    name: name || "",
     qty
   });
   if (hin.error) return showErr("history insert 失敗", hin.error);
@@ -642,7 +647,7 @@ async function addItemManual() {
   await loadAll();
 }
 
-/* ========= 出庫（-1）/ 数量出庫 / 編集 / 削除 ========= */
+/* ========= 出庫（-1）/ 数量出庫 ========= */
 async function shipItem(sku, name) {
   if (!checkPin()) return;
 
@@ -664,8 +669,8 @@ async function shipItem(sku, name) {
     date: new Date().toISOString(),
     user: currentUser(),
     type: "出庫",
-    sku: ex.data.sku || null,
-    name: ex.data.name,
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
     qty: 1
   });
   if (hin.error) return showErr("history insert 失敗", hin.error);
@@ -673,7 +678,6 @@ async function shipItem(sku, name) {
   await loadAll();
 }
 
-// 数量出庫（追加ボタン）
 async function shipItemQty(sku, name) {
   if (!checkPin()) return;
 
@@ -684,7 +688,7 @@ async function shipItemQty(sku, name) {
   const current = Number(ex.data.qty || 0);
 
   const input = prompt(
-    `数量出庫（SKU: ${sku||"-"} / 商品: ${ex.data.name}）\n現在: ${current}\n出庫数量（1以上）`,
+    `数量出庫（SKU: ${sku||"-"} / 商品: ${ex.data.name || ""}）\n現在: ${current}\n出庫数量（1以上）`,
     "1"
   );
   if (input === null) return;
@@ -706,8 +710,8 @@ async function shipItemQty(sku, name) {
     date: new Date().toISOString(),
     user: currentUser(),
     type: "出庫",
-    sku: ex.data.sku || null,
-    name: ex.data.name,
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
     qty: n
   });
   if (hin.error) return showErr("history insert 失敗", hin.error);
@@ -715,10 +719,59 @@ async function shipItemQty(sku, name) {
   await loadAll();
 }
 
+/* ========= SKU/商品名 編集 ========= */
+async function editItemInfo(oldSku, oldName) {
+  if (!checkPin()) return;
+
+  const ex = await findStockRow(oldSku, oldName);
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return alert("商品が見つかりません");
+
+  const curSku = (ex.data.sku || "").trim();
+  const curName = (ex.data.name || "").trim();
+
+  const newSku = prompt(`SKUを編集（必須）\n現在: ${curSku}`, curSku);
+  if (newSku === null) return;
+  if (!newSku.trim()) return alert("SKUは必須です");
+
+  const newName = prompt(`商品名を編集（任意）\n現在: ${curName}`, curName);
+  if (newName === null) return;
+
+  // ★ SKU重複チェック（ユニーク制約が無い前提でアプリ側でガード）
+  const dup = await supabaseClient.from("stocks").select("id").eq("sku", newSku.trim()).maybeSingle();
+  if (dup.error) return showErr("SKU重複チェック失敗", dup.error);
+  if (dup.data && dup.data.id !== ex.data.id) {
+    return alert(`SKU「${newSku.trim()}」は既に存在します。別のSKUにしてください。`);
+  }
+
+  const up = await supabaseClient
+    .from("stocks")
+    .update({
+      sku: newSku.trim(),
+      name: (newName || "").trim()
+    })
+    .eq("id", ex.data.id);
+
+  if (up.error) return showErr("stocks update 失敗", up.error);
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "商品情報編集",
+    sku: newSku.trim(),
+    name: (newName || "").trim(),
+    qty: 0
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+}
+
+/* ========= 在庫編集 / 削除 ========= */
 async function editQty(sku, name, currentQty) {
   if (!checkPin()) return;
 
-  const input = prompt(`在庫数を変更（SKU: ${sku||"-"} / 商品: ${name}）\n現在: ${currentQty}\n新しい数量`, String(currentQty));
+  const input = prompt(`在庫数を変更（SKU: ${sku||"-"} / 商品: ${name||""}）\n現在: ${currentQty}\n新しい数量`, String(currentQty));
   if (input === null) return;
 
   const newQty = Number(input);
@@ -743,8 +796,8 @@ async function editQty(sku, name, currentQty) {
     date: new Date().toISOString(),
     user: currentUser(),
     type,
-    sku: ex.data.sku || null,
-    name: ex.data.name,
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
     qty: Math.abs(diff)
   });
   if (hin.error) return showErr("history insert 失敗", hin.error);
@@ -754,7 +807,7 @@ async function editQty(sku, name, currentQty) {
 
 async function deleteItem(sku, name) {
   if (!checkPin()) return;
-  if (!confirm(`「${name}」を削除します。OK？`)) return;
+  if (!confirm(`SKU「${sku}」を削除します。OK？`)) return;
 
   const ex = await findStockRow(sku, name);
   if (ex.error) return showErr("stocks 取得失敗", ex.error);
@@ -767,8 +820,8 @@ async function deleteItem(sku, name) {
     date: new Date().toISOString(),
     user: currentUser(),
     type: "削除",
-    sku: ex.data.sku || null,
-    name: ex.data.name,
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
     qty: 0
   });
   if (hin.error) return showErr("history insert 失敗", hin.error);
@@ -795,11 +848,11 @@ function csvEscape(v) {
 }
 
 async function exportStocksCSV() {
-  const s = await supabaseClient.from("stocks").select("*").order("name");
+  const s = await supabaseClient.from("stocks").select("*").order("sku");
   if (s.error) return showErr("在庫CSV取得失敗", s.error);
 
   let csv = "sku,name,qty\n";
-  (s.data || []).forEach(r => { csv += `${csvEscape(r.sku||"")},${csvEscape(r.name)},${Number(r.qty)}\n`; });
+  (s.data || []).forEach(r => { csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty)}\n`; });
   downloadText(`stocks_${todayStr()}.csv`, csv);
 }
 async function exportHistoryCSV() {
@@ -808,7 +861,7 @@ async function exportHistoryCSV() {
 
   let csv = "date,user,type,sku,name,qty\n";
   (h.data || []).forEach(r => {
-    csv += `${csvEscape(r.date)},${csvEscape(r.user)},${csvEscape(r.type)},${csvEscape(r.sku||"")},${csvEscape(r.name)},${csvEscape(String(r.qty))}\n`;
+    csv += `${csvEscape(r.date)},${csvEscape(r.user)},${csvEscape(r.type)},${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${csvEscape(String(r.qty))}\n`;
   });
   downloadText(`history_${todayStr()}.csv`, csv);
 }
@@ -854,7 +907,6 @@ async function importStocksCSV(inputEl) {
     return;
   }
 
-  // ===== レポート集計 =====
   let countProcessed = 0;
   let countUpdated = 0;
   let countInserted = 0;
@@ -863,7 +915,6 @@ async function importStocksCSV(inputEl) {
   const errors = [];
   const pushError = (line, msg) => errors.push(`行${line}: ${msg}`);
 
-  // ヘッダー判定（sku,name,delta or sku,name,qty or name,qty）
   const header = rows[0].map(x => x.toLowerCase());
   const hasHeader = header.includes("name") || header.includes("sku") || header.includes("qty") || header.includes("delta");
 
@@ -885,7 +936,6 @@ async function importStocksCSV(inputEl) {
     else { idxSku = 0; idxName = 1; idxValue = 2; }
   }
 
-  // 既存をまとめて取得してMap化（速度用）
   const existing = await supabaseClient.from("stocks").select("*");
   if (existing.error) return showErr("既存在庫取得失敗", existing.error);
 
@@ -896,7 +946,7 @@ async function importStocksCSV(inputEl) {
 
   for (let i = 0; i < dataRows.length; i++) {
     const r = dataRows[i];
-    const lineNo = hasHeader ? (i + 2) : (i + 1); // CSV上の行番号目安
+    const lineNo = hasHeader ? (i + 2) : (i + 1);
 
     try{
       const sku = idxSku >= 0 ? (r[idxSku] || "").trim() : "";
@@ -914,11 +964,10 @@ async function importStocksCSV(inputEl) {
       const found = sku ? bySku.get(sku) : byName.get(name);
 
       if (!found) {
-        // 無ければ新規
-        const startQty = num; // deltaでもsetでも、初回はnum
+        const startQty = num;
         if (startQty <= 0) { countSkipped++; continue; }
 
-        const ins = await supabaseClient.from("stocks").insert({ sku: sku || null, name: name || "(no name)", qty: startQty });
+        const ins = await supabaseClient.from("stocks").insert({ sku: sku || null, name: name || "", qty: startQty });
         if (ins.error) { pushError(lineNo, `insert失敗（${sku||name}）: ${ins.error.message}`); continue; }
 
         countInserted++; countProcessed++;
@@ -928,14 +977,13 @@ async function importStocksCSV(inputEl) {
           user: currentUser(),
           type: mode === "delta" ? "CSV増減" : "CSV上書き",
           sku: sku || null,
-          name: name || "(no name)",
+          name: name || "",
           qty: Math.abs(startQty)
         });
         if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
         continue;
       }
 
-      // 既存あり：更新
       let newQty;
       if (mode === "delta") newQty = Number(found.qty) + num;
       else newQty = num;
@@ -946,17 +994,15 @@ async function importStocksCSV(inputEl) {
 
         countDeleted++; countProcessed++;
 
-        // map更新
         if (found.sku) bySku.delete(found.sku);
         byName.delete(found.name);
       } else {
-        const up = await supabaseClient.from("stocks").update({ qty: newQty, sku: sku || found.sku || null, name: name || found.name }).eq("id", found.id);
+        const up = await supabaseClient.from("stocks").update({ qty: newQty, sku: sku || found.sku || null, name: name || found.name || "" }).eq("id", found.id);
         if (up.error) { pushError(lineNo, `update失敗（${found.sku||found.name}）: ${up.error.message}`); continue; }
 
         countUpdated++; countProcessed++;
 
-        // map更新
-        const updated = { ...found, qty: newQty, sku: (sku || found.sku || null), name: (name || found.name) };
+        const updated = { ...found, qty: newQty, sku: (sku || found.sku || null), name: (name || found.name || "") };
         if (found.sku && updated.sku !== found.sku) bySku.delete(found.sku);
         if (updated.sku) bySku.set(updated.sku, updated);
         byName.delete(found.name);
@@ -968,7 +1014,7 @@ async function importStocksCSV(inputEl) {
         user: currentUser(),
         type: mode === "delta" ? "CSV増減" : "CSV上書き",
         sku: (sku || found.sku || null),
-        name: (name || found.name),
+        name: (name || found.name || ""),
         qty: Math.abs(num)
       });
       if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
