@@ -1,14 +1,88 @@
-<h1>在庫管理アプリ</h1>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>在庫管理アプリ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 30px;
+    }
 
-<table border="1" cellpadding="8">
-  <thead>
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .form {
+      margin-bottom: 20px;
+    }
+
+    input {
+      padding: 6px;
+      margin-right: 5px;
+    }
+
+    button {
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 400px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>在庫管理アプリ</h1>
+
+  <!-- ① 入力フォーム -->
+  <div class="form">
+    <input id="nameInput" type="text" placeholder="商品名">
+    <input id="qtyInput" type="number" placeholder="数量">
+    <button onclick="addItem()">追加</button>
+  </div>
+
+  <!-- ② 在庫一覧表 -->
+  <table id="stockTable">
     <tr>
       <th>商品名</th>
-      <th>在庫数</th>
+      <th>数量</th>
     </tr>
-  </thead>
-  <tbody id="stock-list">
-  </tbody>
-</table>
+  </table>
 
-<script type="module" src="/src/main.js"></script>
+  <!-- ③ 動きの部分 -->
+  <script>
+    function addItem() {
+      const name = document.getElementById("nameInput").value;
+      const qty = document.getElementById("qtyInput").value;
+
+      if (!name || !qty) {
+        alert("商品名と数量を入力してください");
+        return;
+      }
+
+      const table = document.getElementById("stockTable");
+      const row = table.insertRow();
+
+      row.insertCell().textContent = name;
+      row.insertCell().textContent = qty;
+
+      document.getElementById("nameInput").value = "";
+      document.getElementById("qtyInput").value = "";
+    }
+  </script>
+
+</body>
+</html>
