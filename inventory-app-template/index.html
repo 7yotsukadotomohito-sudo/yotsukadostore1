@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>在庫管理アプリ</title>
+  <title>在庫管理システム</title>
   <style>
     body {
       font-family: sans-serif;
@@ -45,16 +45,16 @@
 </head>
 <body>
 
-  <h1>在庫管理アプリ</h1>
+  <h1>在庫管理システム</h1>
 
-  <!-- ① 入力フォーム -->
+  <!-- 入力フォーム -->
   <div class="form">
     <input id="nameInput" type="text" placeholder="商品名">
     <input id="qtyInput" type="number" placeholder="数量">
     <button onclick="addItem()">追加</button>
   </div>
 
-  <!-- ② 在庫一覧表 -->
+  <!-- 在庫一覧 -->
   <table id="stockTable">
     <tr>
       <th>商品名</th>
@@ -62,8 +62,20 @@
     </tr>
   </table>
 
-  <!-- ③ 動きの部分 -->
   <script>
+    // 在庫データ（ここが本体）
+    let stocks = [];
+
+    // ページ読み込み時：保存データを復元
+    window.onload = function () {
+      const saved = localStorage.getItem("stocks");
+      if (saved) {
+        stocks = JSON.parse(saved);
+        renderTable();
+      }
+    };
+
+    // 追加ボタン
     function addItem() {
       const name = document.getElementById("nameInput").value;
       const qty = document.getElementById("qtyInput").value;
@@ -73,14 +85,40 @@
         return;
       }
 
-      const table = document.getElementById("stockTable");
-      const row = table.insertRow();
+      stocks.push({
+        name: name,
+        qty: Number(qty)
+      });
 
-      row.insertCell().textContent = name;
-      row.insertCell().textContent = qty;
+      saveData();
+      renderTable();
 
       document.getElementById("nameInput").value = "";
       document.getElementById("qtyInput").value = "";
+    }
+
+    // 表を描き直す
+    function renderTable() {
+      const table = document.getElementById("stockTable");
+
+      // 表を初期化（ヘッダー以外削除）
+      table.innerHTML = `
+        <tr>
+          <th>商品名</th>
+          <th>数量</th>
+        </tr>
+      `;
+
+      stocks.forEach(item => {
+        const row = table.insertRow();
+        row.insertCell().textContent = item.name;
+        row.insertCell().textContent = item.qty;
+      });
+    }
+
+    // 保存
+    function saveData() {
+      localStorage.setItem("stocks", JSON.stringify(stocks));
     }
   </script>
 
