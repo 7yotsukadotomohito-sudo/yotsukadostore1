@@ -50,7 +50,7 @@
   }
 
   .container{
-    max-width: 1080px;
+    max-width: 1180px;
     margin: 0 auto;
     padding: 18px;
   }
@@ -170,9 +170,7 @@
     box-shadow: 0 0 0 4px rgba(37,99,235,.12);
   }
 
-  input[type="file"]{
-    padding: 10px 0;
-  }
+  input[type="file"]{ padding: 10px 0; }
 
   button{
     border: none;
@@ -222,7 +220,7 @@
   table{
     width: 100%;
     border-collapse: collapse;
-    min-width: 760px;
+    min-width: 1060px;
     background: #fff;
   }
   th, td{
@@ -264,20 +262,10 @@
   }
 
   @media (max-width: 600px){
-    .topActions{
-      width:100%;
-      justify-content:flex-start;
-    }
-    .row.actions{
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .row.actions button{
-      width: 100%;
-    }
-    table{
-      min-width: 980px;
-    }
+    .topActions{ width:100%; justify-content:flex-start; }
+    .row.actions{ flex-direction: column; align-items: stretch; }
+    .row.actions button{ width: 100%; }
+    table{ min-width: 1300px; }
   }
 </style>
 </head>
@@ -288,12 +276,12 @@
   <header>
     <div class="title">
       <h1>在庫管理システム</h1>
-      <div class="subtitle">UI v3（反映確認用） / URLで即利用 / 編集はPINで制御（ログインなし）</div>
+      <div class="subtitle">UI v5（反映確認用） / SKU別アラート閾値 + 不足差分表示 + 不足CSV出力</div>
     </div>
 
     <div class="topActions">
       <button class="btn-ghost" onclick="loadAll()">最新に更新</button>
-      <span class="pill">少数アラート: <b id="alertBadge">3</b> 以下</span>
+      <span class="pill">既定アラート: <b id="alertBadge">3</b> 以下（SKU別に上書き可）</span>
     </div>
   </header>
 
@@ -338,7 +326,7 @@
     <div class="card">
       <div class="sectionTitle">
         <h2>入庫（手入力）</h2>
-        <div class="hint">SKU必須 / 商品名は任意</div>
+        <div class="hint">SKU必須 / 商品名は任意 / アラート閾値も設定可</div>
       </div>
 
       <div class="row actions">
@@ -354,22 +342,27 @@
           <label>数量</label>
           <input id="qtyInput" type="number" placeholder="数量" />
         </div>
+        <div class="field" style="max-width:220px;">
+          <label>アラート閾値（任意）</label>
+          <input id="alertInput" type="number" placeholder="例：3（空欄＝既定）" />
+        </div>
         <button class="btn-primary" onclick="addItemManual()">入庫</button>
       </div>
       <div class="muted" style="margin-top:8px;">
-        SKUが既に存在する場合は在庫を加算（商品名入力があれば更新）
+        SKUが既に存在する場合は在庫を加算（商品名/閾値は入力があれば更新）
       </div>
     </div>
 
     <div class="card">
       <div class="sectionTitle">
         <h2>CSV（ブラウザでアップロード）</h2>
-        <div class="hint">SKU or 商品名で照合 / 増減 & 上書き</div>
+        <div class="hint">SKU or 商品名で照合 / 増減 & 上書き / alert_qty対応</div>
       </div>
 
       <div class="row actions" style="margin-bottom:10px;">
         <button class="btn-ghost" onclick="exportStocksCSV()">在庫CSVエクスポート（バックアップ）</button>
         <button class="btn-ghost" onclick="exportHistoryCSV()">履歴CSVエクスポート（バックアップ）</button>
+        <button class="btn-primary" onclick="exportLowStockCSV()">不足（アラート対象）CSV出力</button>
       </div>
 
       <div class="row" style="margin-top:10px;">
@@ -378,9 +371,9 @@
       </div>
 
       <div class="muted" style="margin-top:8px; line-height:1.55;">
-        形式A（増減）：<code>sku,name,delta</code>（deltaは +/−）<br>
-        形式B（上書き）：<code>sku,name,qty</code><br>
-        ※skuが空ならnameで照合。qty=0は削除扱い。
+        形式A（増減）：<code>sku,name,delta,alert_qty</code>（alert_qtyは任意）<br>
+        形式B（上書き）：<code>sku,name,qty,alert_qty</code>（alert_qtyは任意）<br>
+        ※skuが空ならnameで照合。qty=0は削除扱い。alert_qty空欄は既存のまま（新規は既定）。
       </div>
     </div>
   </div>
@@ -388,7 +381,7 @@
   <div class="card tableCard" style="margin-top:12px;">
     <div class="tableHeader">
       <h2>在庫一覧</h2>
-      <div class="hint">SKU昇順 / 少数在庫はハイライト（≤ <span id="alertLabel">3</span>）</div>
+      <div class="hint">SKU昇順 / 少数在庫はハイライト（SKU別閾値、未設定は既定：<span id="alertLabel">3</span>）</div>
     </div>
     <div class="tableWrap">
       <table id="stockTable"></table>
@@ -427,8 +420,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 /* ✅ 運用PIN（空文字ならPINなし） */
 const EDIT_PIN = "1234";
 
-/* アラート閾値 */
-const ALERT_QTY = 3;
+/* 既定アラート閾値（SKU別にalert_qtyで上書き可） */
+const DEFAULT_ALERT_QTY = 3;
 
 /* ========= UI helpers ========= */
 function setStatus(msg, ok=true) {
@@ -444,6 +437,24 @@ function showErr(context, err) {
 }
 function currentUser() {
   return (document.getElementById("userInput").value || "未入力").trim() || "未入力";
+}
+function getAlertQtyForRow(row){
+  const v = row?.alert_qty;
+  const n = Number(v);
+  if (Number.isFinite(n) && n >= 0) return n;
+  return DEFAULT_ALERT_QTY;
+}
+function shortageForRow(row){
+  const qty = Number(row?.qty || 0);
+  const alertQty = getAlertQtyForRow(row);
+  return Math.max(0, alertQty - qty);
+}
+function normalizeAlertInput(raw){
+  const s = String(raw ?? "").trim();
+  if (s === "") return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0) return { error: "アラート閾値は0以上の数字で入力してください（空欄＝既定）" };
+  return n;
 }
 
 /* ========= PIN 記憶 ========= */
@@ -472,8 +483,8 @@ function checkPin() {
 
 /* ========= Load & Render ========= */
 window.onload = async () => {
-  document.getElementById("alertBadge").textContent = String(ALERT_QTY);
-  document.getElementById("alertLabel").textContent = String(ALERT_QTY);
+  document.getElementById("alertBadge").textContent = String(DEFAULT_ALERT_QTY);
+  document.getElementById("alertLabel").textContent = String(DEFAULT_ALERT_QTY);
 
   loadSavedPin();
   savePinOnChange();
@@ -484,14 +495,14 @@ window.onload = async () => {
 async function loadAll() {
   setStatus("読み込み中…");
 
-  // ★ SKU昇順
   const s = await supabaseClient.from("stocks").select("*").order("sku");
   if (s.error) return showErr("stocks 読み込み失敗", s.error);
 
   const h = await supabaseClient.from("history").select("*").order("date", { ascending: false });
   if (h.error) return showErr("history 読み込み失敗", h.error);
 
-  renderStocks(s.data || []);
+  window.__stocks_cache__ = (s.data || []); // 不足CSV用にキャッシュ
+  renderStocks(window.__stocks_cache__);
   renderHistory(h.data || []);
   renderMonthly(h.data || []);
   setStatus("準備OK", true);
@@ -504,28 +515,37 @@ function renderStocks(stocks) {
       <th style="width:160px;">SKU</th>
       <th>商品</th>
       <th style="width:120px; text-align:right;">数量</th>
-      <th style="width:520px;">操作</th>
+      <th style="width:130px; text-align:right;">アラート</th>
+      <th style="width:120px; text-align:right;">差</th>
+      <th style="width:560px;">操作</th>
     </tr>`;
 
   if (!stocks.length){
     const tr = table.insertRow();
-    tr.innerHTML = `<td colspan="4" class="center muted">まだ在庫がありません</td>`;
+    tr.innerHTML = `<td colspan="6" class="center muted">まだ在庫がありません</td>`;
     return;
   }
 
   stocks.forEach(s => {
     const qty = Number(s.qty || 0);
+    const alertQty = getAlertQtyForRow(s);
+    const shortage = shortageForRow(s);
+
     const tr = table.insertRow();
-    if (qty <= ALERT_QTY) tr.classList.add("low-stock");
+    if (qty <= alertQty) tr.classList.add("low-stock");
+
+    const alertLabel = (s.alert_qty === null || s.alert_qty === undefined || s.alert_qty === "") ? `既定(${DEFAULT_ALERT_QTY})` : String(alertQty);
 
     tr.innerHTML = `
       <td class="muted">${escapeHtml(s.sku || "")}</td>
       <td>${escapeHtml(s.name || "")}</td>
       <td class="qty">${qty}</td>
+      <td class="qty">${escapeHtml(alertLabel)}</td>
+      <td class="qty">${shortage}</td>
       <td>
         <button class="btn-primary btn-small" onclick="shipItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">出庫(-1)</button>
         <button class="btn-ghost btn-small" onclick="shipItemQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">数量出庫</button>
-        <button class="btn-ghost btn-small" onclick="editItemInfo('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">SKU/商品名編集</button>
+        <button class="btn-ghost btn-small" onclick="editItemInfo('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">SKU/商品名/アラート編集</button>
         <button class="btn-ghost btn-small" onclick="editQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}', ${qty})">在庫編集</button>
         <button class="btn-danger btn-small" onclick="deleteItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">削除</button>
       </td>
@@ -539,7 +559,7 @@ function renderHistory(history) {
     <tr>
       <th style="width:190px;">日時（JST）</th>
       <th style="width:120px;">ユーザー</th>
-      <th style="width:140px;">種別</th>
+      <th style="width:180px;">種別</th>
       <th style="width:160px;">SKU</th>
       <th>商品</th>
       <th style="width:110px; text-align:right;">数量</th>
@@ -592,41 +612,38 @@ function renderMonthly(history) {
 
 /* ========= 照合：SKU優先、なければ商品名 ========= */
 async function findStockRow(sku, name) {
-  if (sku) {
-    return await supabaseClient.from("stocks").select("*").eq("sku", sku).maybeSingle();
-  }
+  if (sku) return await supabaseClient.from("stocks").select("*").eq("sku", sku).maybeSingle();
   return await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
 }
 
-/* ========= 手入力入庫（SKU必須） ========= */
+/* ========= 手入力入庫 ========= */
 async function addItemManual() {
   if (!checkPin()) return;
 
   const sku = (document.getElementById("skuInput").value || "").trim();
-  const name = (document.getElementById("nameInput").value || "").trim(); // 任意
+  const name = (document.getElementById("nameInput").value || "").trim();
   const qty = Number(document.getElementById("qtyInput").value);
+  const alertRaw = document.getElementById("alertInput").value;
 
   if (!sku || !qty) return alert("SKUと数量は必須です");
+
+  const alertVal = normalizeAlertInput(alertRaw);
+  if (alertVal && alertVal.error) return alert(alertVal.error);
 
   const ex = await findStockRow(sku, name);
   if (ex.error) return showErr("stocks 既存チェック失敗", ex.error);
 
   if (ex.data) {
     const newQty = Number(ex.data.qty || 0) + qty;
-    const newName = name ? name : (ex.data.name || ""); // 入力があれば更新
-
-    const up = await supabaseClient
-      .from("stocks")
-      .update({ qty: newQty, name: newName })
-      .eq("id", ex.data.id);
-
+    const payload = { qty: newQty };
+    if (name) payload.name = name;
+    if (alertVal !== null) payload.alert_qty = alertVal;
+    const up = await supabaseClient.from("stocks").update(payload).eq("id", ex.data.id);
     if (up.error) return showErr("stocks update 失敗", up.error);
   } else {
-    const ins = await supabaseClient.from("stocks").insert({
-      sku,
-      name: name || "",
-      qty
-    });
+    const payload = { sku, name: name || "", qty };
+    if (alertVal !== null) payload.alert_qty = alertVal;
+    const ins = await supabaseClient.from("stocks").insert(payload);
     if (ins.error) return showErr("stocks insert 失敗", ins.error);
   }
 
@@ -643,11 +660,12 @@ async function addItemManual() {
   document.getElementById("skuInput").value = "";
   document.getElementById("nameInput").value = "";
   document.getElementById("qtyInput").value = "";
+  document.getElementById("alertInput").value = "";
 
   await loadAll();
 }
 
-/* ========= 出庫（-1）/ 数量出庫 ========= */
+/* ========= 出庫 ========= */
 async function shipItem(sku, name) {
   if (!checkPin()) return;
 
@@ -686,7 +704,6 @@ async function shipItemQty(sku, name) {
   if (!ex.data) return;
 
   const current = Number(ex.data.qty || 0);
-
   const input = prompt(
     `数量出庫（SKU: ${sku||"-"} / 商品: ${ex.data.name || ""}）\n現在: ${current}\n出庫数量（1以上）`,
     "1"
@@ -719,7 +736,7 @@ async function shipItemQty(sku, name) {
   await loadAll();
 }
 
-/* ========= SKU/商品名 編集 ========= */
+/* ========= SKU/商品名/アラート 編集 ========= */
 async function editItemInfo(oldSku, oldName) {
   if (!checkPin()) return;
 
@@ -729,6 +746,7 @@ async function editItemInfo(oldSku, oldName) {
 
   const curSku = (ex.data.sku || "").trim();
   const curName = (ex.data.name || "").trim();
+  const curAlert = (ex.data.alert_qty === null || ex.data.alert_qty === undefined) ? "" : String(ex.data.alert_qty);
 
   const newSku = prompt(`SKUを編集（必須）\n現在: ${curSku}`, curSku);
   if (newSku === null) return;
@@ -737,29 +755,35 @@ async function editItemInfo(oldSku, oldName) {
   const newName = prompt(`商品名を編集（任意）\n現在: ${curName}`, curName);
   if (newName === null) return;
 
-  // ★ SKU重複チェック（ユニーク制約が無い前提でアプリ側でガード）
+  const newAlertRaw = prompt(
+    `アラート閾値を編集（任意）\n空欄＝既定(${DEFAULT_ALERT_QTY})\n現在: ${curAlert === "" ? "（既定）" : curAlert}`,
+    curAlert
+  );
+  if (newAlertRaw === null) return;
+
+  const alertVal = normalizeAlertInput(newAlertRaw);
+  if (alertVal && alertVal.error) return alert(alertVal.error);
+
+  // SKU重複チェック（UX用）
   const dup = await supabaseClient.from("stocks").select("id").eq("sku", newSku.trim()).maybeSingle();
   if (dup.error) return showErr("SKU重複チェック失敗", dup.error);
-  if (dup.data && dup.data.id !== ex.data.id) {
-    return alert(`SKU「${newSku.trim()}」は既に存在します。別のSKUにしてください。`);
-  }
+  if (dup.data && dup.data.id !== ex.data.id) return alert(`SKU「${newSku.trim()}」は既に存在します。別のSKUにしてください。`);
 
-  const up = await supabaseClient
-    .from("stocks")
-    .update({
-      sku: newSku.trim(),
-      name: (newName || "").trim()
-    })
-    .eq("id", ex.data.id);
+  const payload = {
+    sku: newSku.trim(),
+    name: (newName || "").trim(),
+    alert_qty: (alertVal === null) ? null : alertVal
+  };
 
+  const up = await supabaseClient.from("stocks").update(payload).eq("id", ex.data.id);
   if (up.error) return showErr("stocks update 失敗", up.error);
 
   const hin = await supabaseClient.from("history").insert({
     date: new Date().toISOString(),
     user: currentUser(),
     type: "商品情報編集",
-    sku: newSku.trim(),
-    name: (newName || "").trim(),
+    sku: payload.sku,
+    name: payload.name,
     qty: 0
   });
   if (hin.error) return showErr("history insert 失敗", hin.error);
@@ -851,10 +875,31 @@ async function exportStocksCSV() {
   const s = await supabaseClient.from("stocks").select("*").order("sku");
   if (s.error) return showErr("在庫CSV取得失敗", s.error);
 
-  let csv = "sku,name,qty\n";
-  (s.data || []).forEach(r => { csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty)}\n`; });
+  let csv = "sku,name,qty,alert_qty,shortage\n";
+  (s.data || []).forEach(r => {
+    const aq = (r.alert_qty === null || r.alert_qty === undefined) ? "" : String(r.alert_qty);
+    const sh = Math.max(0, (Number(aq === "" ? DEFAULT_ALERT_QTY : aq) - Number(r.qty || 0)));
+    csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty)},${csvEscape(aq)},${sh}\n`;
+  });
   downloadText(`stocks_${todayStr()}.csv`, csv);
 }
+
+function exportLowStockCSV(){
+  const stocks = window.__stocks_cache__ || [];
+  const low = stocks
+    .map(r => ({...r, _alert: getAlertQtyForRow(r), _short: shortageForRow(r)}))
+    .filter(r => Number(r.qty || 0) <= r._alert);
+
+  let csv = "sku,name,qty,alert_qty,shortage\n";
+  low.forEach(r => {
+    const aq = (r.alert_qty === null || r.alert_qty === undefined) ? "" : String(r.alert_qty);
+    csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty || 0)},${csvEscape(aq)},${Number(r._short)}\n`;
+  });
+
+  downloadText(`low_stock_${todayStr()}.csv`, csv);
+  alert(`不足CSVを出力しました（${low.length}件）`);
+}
+
 async function exportHistoryCSV() {
   const h = await supabaseClient.from("history").select("*").order("date", { ascending: false });
   if (h.error) return showErr("履歴CSV取得失敗", h.error);
@@ -901,39 +946,33 @@ async function importStocksCSV(inputEl) {
 
   const text = await file.text();
   const rows = parseCSV(text).map(r => r.map(c => (c ?? "").trim())).filter(r => r.length >= 2);
-  if (!rows.length) {
-    alert("CSVが空です");
-    inputEl.value = "";
-    return;
-  }
+  if (!rows.length) { alert("CSVが空です"); inputEl.value = ""; return; }
 
-  let countProcessed = 0;
-  let countUpdated = 0;
-  let countInserted = 0;
-  let countDeleted = 0;
-  let countSkipped = 0;
+  let countProcessed = 0, countUpdated = 0, countInserted = 0, countDeleted = 0, countSkipped = 0;
   const errors = [];
   const pushError = (line, msg) => errors.push(`行${line}: ${msg}`);
 
   const header = rows[0].map(x => x.toLowerCase());
-  const hasHeader = header.includes("name") || header.includes("sku") || header.includes("qty") || header.includes("delta");
+  const hasHeader = header.includes("name") || header.includes("sku") || header.includes("qty") || header.includes("delta") || header.includes("alert_qty");
 
   let dataRows = rows;
-  let mode = "set"; // set=qty上書き / delta=増減
-  let idxSku = 0, idxName = 1, idxValue = 2;
+  let mode = "set";
+  let idxSku = 0, idxName = 1, idxValue = 2, idxAlert = -1;
 
   if (hasHeader) {
     idxSku = header.indexOf("sku");
     idxName = header.indexOf("name");
     const iDelta = header.indexOf("delta");
     const iQty = header.indexOf("qty");
+    idxAlert = header.indexOf("alert_qty");
     if (iDelta !== -1) { mode="delta"; idxValue = iDelta; }
     else { mode="set"; idxValue = iQty !== -1 ? iQty : 2; }
     dataRows = rows.slice(1);
   } else {
     mode = "set";
-    if (rows[0].length === 2) { idxSku = -1; idxName = 0; idxValue = 1; }
-    else { idxSku = 0; idxName = 1; idxValue = 2; }
+    if (rows[0].length === 2) { idxSku = -1; idxName = 0; idxValue = 1; idxAlert = -1; }
+    else if (rows[0].length >= 4) { idxSku = 0; idxName = 1; idxValue = 2; idxAlert = 3; }
+    else { idxSku = 0; idxName = 1; idxValue = 2; idxAlert = -1; }
   }
 
   const existing = await supabaseClient.from("stocks").select("*");
@@ -952,14 +991,15 @@ async function importStocksCSV(inputEl) {
       const sku = idxSku >= 0 ? (r[idxSku] || "").trim() : "";
       const name = (r[idxName] || "").trim();
       const valRaw = (r[idxValue] || "").trim();
+      const alertRaw = (idxAlert >= 0) ? (r[idxAlert] || "").trim() : "";
+
       if (!name && !sku) { countSkipped++; continue; }
 
       const num = Number(valRaw);
-      if (!Number.isFinite(num)) {
-        countSkipped++;
-        pushError(lineNo, `数量が数値ではありません（"${valRaw}"）`);
-        continue;
-      }
+      if (!Number.isFinite(num)) { countSkipped++; pushError(lineNo, `数量が数値ではありません（"${valRaw}"）`); continue; }
+
+      const alertVal = normalizeAlertInput(alertRaw);
+      if (alertVal && alertVal.error) { countSkipped++; pushError(lineNo, alertVal.error); continue; }
 
       const found = sku ? bySku.get(sku) : byName.get(name);
 
@@ -967,7 +1007,10 @@ async function importStocksCSV(inputEl) {
         const startQty = num;
         if (startQty <= 0) { countSkipped++; continue; }
 
-        const ins = await supabaseClient.from("stocks").insert({ sku: sku || null, name: name || "", qty: startQty });
+        const payload = { sku: sku || null, name: name || "", qty: startQty };
+        if (alertVal !== null && idxAlert >= 0) payload.alert_qty = alertVal;
+
+        const ins = await supabaseClient.from("stocks").insert(payload);
         if (ins.error) { pushError(lineNo, `insert失敗（${sku||name}）: ${ins.error.message}`); continue; }
 
         countInserted++; countProcessed++;
@@ -976,33 +1019,32 @@ async function importStocksCSV(inputEl) {
           date: new Date().toISOString(),
           user: currentUser(),
           type: mode === "delta" ? "CSV増減" : "CSV上書き",
-          sku: sku || null,
-          name: name || "",
+          sku: payload.sku,
+          name: payload.name,
           qty: Math.abs(startQty)
         });
         if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
         continue;
       }
 
-      let newQty;
-      if (mode === "delta") newQty = Number(found.qty) + num;
-      else newQty = num;
+      let newQty = (mode === "delta") ? (Number(found.qty) + num) : num;
 
       if (newQty <= 0) {
         const del = await supabaseClient.from("stocks").delete().eq("id", found.id);
         if (del.error) { pushError(lineNo, `delete失敗（${found.sku||found.name}）: ${del.error.message}`); continue; }
-
         countDeleted++; countProcessed++;
-
         if (found.sku) bySku.delete(found.sku);
         byName.delete(found.name);
       } else {
-        const up = await supabaseClient.from("stocks").update({ qty: newQty, sku: sku || found.sku || null, name: name || found.name || "" }).eq("id", found.id);
+        const payload = { qty: newQty, sku: sku || found.sku || null, name: name || found.name || "" };
+        if (idxAlert >= 0 && alertVal !== null) payload.alert_qty = alertVal;
+
+        const up = await supabaseClient.from("stocks").update(payload).eq("id", found.id);
         if (up.error) { pushError(lineNo, `update失敗（${found.sku||found.name}）: ${up.error.message}`); continue; }
 
         countUpdated++; countProcessed++;
 
-        const updated = { ...found, qty: newQty, sku: (sku || found.sku || null), name: (name || found.name || "") };
+        const updated = { ...found, ...payload };
         if (found.sku && updated.sku !== found.sku) bySku.delete(found.sku);
         if (updated.sku) bySku.set(updated.sku, updated);
         byName.delete(found.name);
