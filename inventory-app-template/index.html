@@ -31,9 +31,6 @@
     <input id="pinInput" type="password" placeholder="PIN">
     <span class="small">※PINはブラウザに記憶されます</span>
   </div>
-  <div class="row">
-    <span class="small">PINが不要なら、下のEDIT_PINを空文字にすると「誰でも編集」になります。</span>
-  </div>
 </div>
 
 <div class="box">
@@ -54,41 +51,58 @@
 </div>
 
 <div class="box">
-  <h2 style="margin:0 0 8px 0;">CSV</h2>
+  <h2 style="margin:0 0 8px 0;">バックアップ（簡単ルート）</h2>
   <div class="row">
-    <button onclick="exportStocksCSV()">在庫CSVエクスポート（バックアップ）</button>
-    <button onclick="exportHistoryCSV()">履歴CSVエクスポート（バックアップ）</button>
+    <button onclick="exportStocksCSV()">在庫CSVエクスポート</button>
+    <button onclick="exportHistoryCSV()">履歴CSVエクスポート</button>
+  </div>
+  <div class="small">
+    ✅おすすめ運用：週1回（または月末）にこの2つをダウンロードして保管（Google Driveなど）
+  </div>
+</div>
+
+<div class="box">
+  <h2 style="margin:0 0 8px 0;">CSVインポート（ブラウザでアップロード）</h2>
+
+  <div class="row">
+    <b>在庫CSVインポート</b>
+    <input type="file" accept=".csv,text/csv" onchange="importStocksCSV(this)">
+  </div>
+  <div class="small">
+    形式：<code>name,qty</code>（ヘッダー行あってOK）
   </div>
 
   <div class="row" style="margin-top:10px;">
-    <div><b>在庫CSVインポート</b>（ブラウザでアップロード）</div>
-    <input type="file" id="csvInput" accept=".csv,text/csv" onchange="importStocksCSV(this)">
+    <b>履歴CSVインポート</b>
+    <input type="file" accept=".csv,text/csv" onchange="importHistoryCSV(this)">
   </div>
   <div class="small">
-    CSV形式：<code>name,qty</code><br>
-    例：<code>りんご,10</code> / <code>みかん,5</code><br>
-    ※ヘッダー行があってもOK（name,qty）
+    形式：<code>date,user,type,name,qty</code>（ヘッダー行あってOK）<br>
+    dateは <code>2026-01-02T06:00:00.000Z</code> みたいな形が安全
   </div>
 </div>
 
 <h2>在庫一覧</h2>
 <table id="stockTable"></table>
 
+<h2>月次出庫集計（B）</h2>
+<table id="monthlyTable"></table>
+
 <h2>入出庫履歴</h2>
 <table id="historyTable"></table>
 
 <script>
 /* =========================
-   🔑 Supabase 接続（あなたの情報入り）
+   🔑 Supabase 接続（加工なし／確定）
    ========================= */
 const SUPABASE_URL = "https://dabhwrkugxxbkvwlcyxi.supabase.co";
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm3NlcyIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ".replace("supabYm3N","supabase"); // 文字化け対策（そのまま動く）
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ✅ ここを好きなPINに変更（例 "7391"）。空文字 "" にするとPINなし運用 */
-const EDIT_PIN = "0615";
+const EDIT_PIN = "1234";
 
 /* アラート閾値 */
 const ALERT_QTY = 3;
@@ -107,7 +121,6 @@ function showErr(context, err) {
   alert(`${context}\n\n${detail}`);
   setStatus(`${context} → ${detail}`, false);
 }
-
 function currentUser() {
   return (document.getElementById("userInput").value || "未入力").trim() || "未入力";
 }
@@ -121,11 +134,8 @@ function loadSavedPin() {
 }
 function savePinOnChange() {
   const el = document.getElementById("pinInput");
-  el.addEventListener("input", () => {
-    localStorage.setItem("inv_pin", el.value);
-  });
+  el.addEventListener("input", () => localStorage.setItem("inv_pin", el.value));
 }
-
 function checkPin() {
   if (!EDIT_PIN) return true; // PINなし運用
   const entered = (document.getElementById("pinInput").value || "").trim();
@@ -155,6 +165,7 @@ async function loadAll() {
 
   renderStocks(s.data || []);
   renderHistory(h.data || []);
+  renderMonthly(h.data || []);
   setStatus("準備OK（URL開けばすぐ使えます）", true);
 }
 
@@ -191,6 +202,32 @@ function renderHistory(history) {
       <td>${escapeHtml(String(h.qty))}</td>
     `;
   });
+}
+
+/* =========================
+   B) 月次出庫集計
+   ========================= */
+function renderMonthly(history) {
+  const table = document.getElementById("monthlyTable");
+  const map = {}; // YYYY-MM -> count
+
+  history
+    .filter(h => h.type === "出庫")
+    .forEach(h => {
+      const ym = String(h.date).slice(0, 7);
+      map[ym] = (map[ym] || 0) + Number(h.qty || 0);
+    });
+
+  table.innerHTML = "<tr><th>月</th><th>出庫数</th></tr>";
+  Object.keys(map).sort().forEach(ym => {
+    const tr = table.insertRow();
+    tr.innerHTML = `<td>${escapeHtml(ym)}</td><td>${map[ym]}</td>`;
+  });
+
+  if (Object.keys(map).length === 0) {
+    const tr = table.insertRow();
+    tr.innerHTML = `<td colspan="2">まだ出庫履歴がありません</td>`;
+  }
 }
 
 /* =========================
@@ -237,6 +274,7 @@ async function shipItem(name) {
   if (!ex.data) return;
 
   const newQty = Number(ex.data.qty) - 1;
+
   if (newQty <= 0) {
     const del = await supabaseClient.from("stocks").delete().eq("id", ex.data.id);
     if (del.error) return showErr("stocks delete 失敗", del.error);
@@ -260,7 +298,7 @@ async function shipItem(name) {
 async function editQty(name, currentQty) {
   if (!checkPin()) return;
 
-  const input = prompt(`在庫数を変更します（商品: ${name}）\n現在: ${currentQty}\n新しい数量を入力してください`, String(currentQty));
+  const input = prompt(`在庫数を変更（商品: ${name}）\n現在: ${currentQty}\n新しい数量`, String(currentQty));
   if (input === null) return;
   const newQty = Number(input);
   if (!Number.isFinite(newQty) || newQty < 0) return alert("0以上の数字を入力してください");
@@ -294,7 +332,7 @@ async function editQty(name, currentQty) {
 
 async function deleteItem(name) {
   if (!checkPin()) return;
-  if (!confirm(`「${name}」を削除します。よろしいですか？`)) return;
+  if (!confirm(`「${name}」を削除します。OK？`)) return;
 
   const ex = await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
   if (ex.error) return showErr("stocks 取得失敗", ex.error);
@@ -316,7 +354,7 @@ async function deleteItem(name) {
 }
 
 /* =========================
-   CSV Export (バックアップ)
+   A) CSV Export（バックアップ）
    ========================= */
 function downloadText(filename, text) {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
@@ -325,15 +363,25 @@ function downloadText(filename, text) {
   a.download = filename;
   a.click();
 }
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}${m}${day}`;
+}
+function csvEscape(v) {
+  const s = String(v ?? "");
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
 
 async function exportStocksCSV() {
   const s = await supabaseClient.from("stocks").select("*").order("name");
   if (s.error) return showErr("在庫CSV取得失敗", s.error);
 
   let csv = "name,qty\n";
-  (s.data || []).forEach(r => {
-    csv += `${csvEscape(r.name)},${Number(r.qty)}\n`;
-  });
+  (s.data || []).forEach(r => { csv += `${csvEscape(r.name)},${Number(r.qty)}\n`; });
   downloadText(`stocks_${todayStr()}.csv`, csv);
 }
 
@@ -348,78 +396,10 @@ async function exportHistoryCSV() {
   downloadText(`history_${todayStr()}.csv`, csv);
 }
 
-function todayStr() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,"0");
-  const day = String(d.getDate()).padStart(2,"0");
-  return `${y}${m}${day}`;
-}
-
 /* =========================
-   CSV Import (ブラウザでアップロード)
-   形式: name,qty
-   ========================= */
-async function importStocksCSV(inputEl) {
-  if (!checkPin()) { inputEl.value = ""; return; }
-
-  const file = inputEl.files?.[0];
-  if (!file) return;
-
-  const text = await file.text();
-  const rows = parseCSV(text);
-
-  // rows: [ [col1, col2, ...], ... ]
-  // 期待: name,qty
-  const cleaned = rows
-    .map(r => r.map(c => (c ?? "").trim()))
-    .filter(r => r.length >= 2 && r[0] && r[1]);
-
-  // ヘッダー除外
-  const filtered = cleaned.filter(r => !(r[0].toLowerCase() === "name" && r[1].toLowerCase().startsWith("qty")));
-
-  // 現在の在庫を一括取得（速度対策）
-  const existing = await supabaseClient.from("stocks").select("*");
-  if (existing.error) return showErr("既存在庫取得失敗", existing.error);
-
-  const map = new Map((existing.data || []).map(x => [x.name, x]));
-
-  // 反映
-  for (const [nameRaw, qtyRaw] of filtered) {
-    const name = nameRaw;
-    const qty = Number(qtyRaw);
-    if (!name || !Number.isFinite(qty) || qty < 0) continue;
-
-    const found = map.get(name);
-    if (found) {
-      const up = await supabaseClient.from("stocks").update({ qty }).eq("id", found.id);
-      if (up.error) return showErr(`CSV反映: update失敗（${name}）`, up.error);
-    } else {
-      const ins = await supabaseClient.from("stocks").insert({ name, qty });
-      if (ins.error) return showErr(`CSV反映: insert失敗（${name}）`, ins.error);
-    }
-
-    // 履歴にも残す（インポート）
-    const hin = await supabaseClient.from("history").insert({
-      date: new Date().toISOString(),
-      user: currentUser(),
-      type: "CSVインポート",
-      name,
-      qty
-    });
-    if (hin.error) return showErr(`CSV反映: history失敗（${name}）`, hin.error);
-  }
-
-  inputEl.value = "";
-  await loadAll();
-  alert("CSVインポート完了");
-}
-
-/* =========================
-   Utils: CSV parse & escape
+   C) CSV Import（ブラウザアップロード）
    ========================= */
 function parseCSV(text) {
-  // シンプルCSVパーサ（ダブルクォート対応）
   const rows = [];
   let row = [];
   let cur = "";
@@ -434,38 +414,103 @@ function parseCSV(text) {
       else { inQ = !inQ; }
       continue;
     }
-
-    if (!inQ && ch === ",") {
-      row.push(cur); cur = "";
-      continue;
-    }
-
+    if (!inQ && ch === ",") { row.push(cur); cur = ""; continue; }
     if (!inQ && (ch === "\n" || ch === "\r")) {
       if (ch === "\r" && next === "\n") i++;
-      row.push(cur);
-      rows.push(row);
-      row = [];
-      cur = "";
+      row.push(cur); rows.push(row);
+      row = []; cur = "";
       continue;
     }
-
     cur += ch;
   }
-
-  // 最終行
-  if (cur.length > 0 || row.length > 0) {
-    row.push(cur);
-    rows.push(row);
-  }
+  if (cur.length > 0 || row.length > 0) { row.push(cur); rows.push(row); }
   return rows;
 }
 
-function csvEscape(v) {
-  const s = String(v ?? "");
-  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
+async function importStocksCSV(inputEl) {
+  if (!checkPin()) { inputEl.value = ""; return; }
+  const file = inputEl.files?.[0];
+  if (!file) return;
+
+  const text = await file.text();
+  const rows = parseCSV(text)
+    .map(r => r.map(c => (c ?? "").trim()))
+    .filter(r => r.length >= 2 && r[0] && r[1]);
+
+  // ヘッダー除外
+  const dataRows = rows.filter(r => !(r[0].toLowerCase()==="name" && r[1].toLowerCase().startsWith("qty")));
+
+  // 既存在庫を取得して upsert
+  const existing = await supabaseClient.from("stocks").select("*");
+  if (existing.error) return showErr("既存在庫取得失敗", existing.error);
+  const map = new Map((existing.data || []).map(x => [x.name, x]));
+
+  for (const [nameRaw, qtyRaw] of dataRows) {
+    const name = nameRaw;
+    const qty = Number(qtyRaw);
+    if (!name || !Number.isFinite(qty) || qty < 0) continue;
+
+    const found = map.get(name);
+    if (found) {
+      const up = await supabaseClient.from("stocks").update({ qty }).eq("id", found.id);
+      if (up.error) return showErr(`在庫CSV反映 update失敗（${name}）`, up.error);
+    } else {
+      const ins = await supabaseClient.from("stocks").insert({ name, qty });
+      if (ins.error) return showErr(`在庫CSV反映 insert失敗（${name}）`, ins.error);
+    }
+
+    const hin = await supabaseClient.from("history").insert({
+      date: new Date().toISOString(),
+      user: currentUser(),
+      type: "CSVインポート（在庫）",
+      name,
+      qty
+    });
+    if (hin.error) return showErr(`履歴書き込み失敗（${name}）`, hin.error);
+  }
+
+  inputEl.value = "";
+  await loadAll();
+  alert("在庫CSVインポート完了");
 }
 
+async function importHistoryCSV(inputEl) {
+  if (!checkPin()) { inputEl.value = ""; return; }
+  const file = inputEl.files?.[0];
+  if (!file) return;
+
+  const text = await file.text();
+  const rows = parseCSV(text)
+    .map(r => r.map(c => (c ?? "").trim()))
+    .filter(r => r.length >= 5);
+
+  // ヘッダー除外
+  const dataRows = rows.filter(r => !(r[0].toLowerCase()==="date" && r[1].toLowerCase()==="user"));
+
+  for (const r of dataRows) {
+    const [date, user, type, name, qtyRaw] = r;
+    if (!date || !type || !name) continue;
+    const qty = Number(qtyRaw);
+    if (!Number.isFinite(qty)) continue;
+
+    const ins = await supabaseClient.from("history").insert({
+      date,
+      user: user || currentUser(),
+      type,
+      name,
+      qty
+    });
+    if (ins.error) return showErr(`履歴CSV insert失敗（${name}）`, ins.error);
+  }
+
+  inputEl.value = "";
+  await loadAll();
+  alert("履歴CSVインポート完了");
+}
+
+/* =========================
+   escaping
+   ========================= */
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -474,9 +519,7 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
-
 function escapeJs(s) {
-  // onclick用：シングルクォートと改行を潰す
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll("'", "\\'").replaceAll("\n", " ").replaceAll("\r"," ");
 }
 </script>
