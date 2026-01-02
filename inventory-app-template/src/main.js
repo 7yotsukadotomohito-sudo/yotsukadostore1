@@ -1,4 +1,16 @@
-document.getElementById('app').innerHTML = `
-<h1>在庫管理アプリ（テンプレ）</h1>
-<p>デプロイ成功！ここから機能を追加していきます。</p>
-`;
+const stocks = [
+  { name: "りんご", qty: 10 },
+  { name: "みかん", qty: 5 },
+  { name: "バナナ", qty: 2 },
+];
+
+const tbody = document.getElementById("stock-list");
+
+stocks.forEach(item => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${item.name}</td>
+    <td>${item.qty}</td>
+  `;
+  tbody.appendChild(tr);
+});
