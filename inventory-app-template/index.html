@@ -3,10 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <title>在庫管理システム</title>
+
+<!-- Supabase v2 -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
 <style>
 body { font-family: sans-serif; padding: 30px; }
-input, button { padding: 6px; margin: 3px; }
+input, button { padding: 6px; margin: 4px; }
 table { border-collapse: collapse; margin-bottom: 30px; width: 900px; }
 th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
 th { background: #f0f0f0; }
@@ -18,72 +21,140 @@ th { background: #f0f0f0; }
 
 <h1>在庫管理システム</h1>
 
-ユーザー名：
-<input id="userInput" placeholder="例：山田">
+<div>
+  ユーザー名：
+  <input id="userInput" placeholder="例：山田">
+</div>
 
 <h2>入庫</h2>
 <input id="nameInput" placeholder="商品名">
 <input id="qtyInput" type="number" placeholder="数量">
 <button onclick="addItem()">入庫</button>
 
+<h2>在庫一覧</h2>
 <table id="stockTable"></table>
 
 <h2>入出庫履歴</h2>
 <table id="historyTable"></table>
 
 <script>
-const supabase = supabasejs.createClient(
-  "https://dabhwrkugxxbkvwlcyxi.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ"
+/* =========================
+   🔑 Supabase 接続設定
+   ========================= */
+const SUPABASE_URL = "https://dabhwrkugxxbkvwlcyxi.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ";
+
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
 );
 
 const ALERT_QTY = 3;
 
+/* =========================
+   初期ロード
+   ========================= */
+window.onload = () => {
+  loadAll();
+};
+
+/* =========================
+   データ取得
+   ========================= */
 async function loadAll() {
-  const { data: stocks } = await supabase.from("stocks").select("*");
-  const { data: history } = await supabase.from("history").select("*").order("date", { ascending: false });
+  const { data: stocks, error: sErr } =
+    await supabaseClient.from("stocks").select("*").order("name");
+
+  const { data: history, error: hErr } =
+    await supabaseClient.from("history")
+      .select("*")
+      .order("date", { ascending: false });
+
+  if (sErr || hErr) {
+    alert("Supabase通信エラー（Consoleを確認）");
+    console.error(sErr, hErr);
+    return;
+  }
+
   renderStocks(stocks);
   renderHistory(history);
 }
 
+/* =========================
+   入庫
+   ========================= */
 async function addItem() {
-  const name = nameInput.value;
+  const name = nameInput.value.trim();
   const qty = Number(qtyInput.value);
-  if (!name || !qty) return;
+  const user = userInput.value || "未入力";
 
-  const { data } = await supabase.from("stocks").select("*").eq("name", name).single();
-
-  if (data) {
-    await supabase.from("stocks").update({ qty: data.qty + qty }).eq("id", data.id);
-  } else {
-    await supabase.from("stocks").insert({ name, qty });
+  if (!name || !qty) {
+    alert("商品名と数量を入力してください");
+    return;
   }
 
-  await supabase.from("history").insert({
+  const { data: existing } = await supabaseClient
+    .from("stocks")
+    .select("*")
+    .eq("name", name)
+    .single();
+
+  if (existing) {
+    await supabaseClient
+      .from("stocks")
+      .update({ qty: existing.qty + qty })
+      .eq("id", existing.id);
+  } else {
+    await supabaseClient
+      .from("stocks")
+      .insert({ name, qty });
+  }
+
+  await supabaseClient.from("history").insert({
     date: new Date(),
-    user: userInput.value || "未入力",
+    user,
     type: "入庫",
     name,
     qty
   });
 
+  nameInput.value = "";
+  qtyInput.value = "";
+
   loadAll();
 }
 
-async function ship(name) {
-  const { data } = await supabase.from("stocks").select("*").eq("name", name).single();
+/* =========================
+   出庫
+   ========================= */
+async function shipItem(name) {
+  const user = userInput.value || "未入力";
+
+  const { data } = await supabaseClient
+    .from("stocks")
+    .select("*")
+    .eq("name", name)
+    .single();
+
   if (!data) return;
 
   const newQty = data.qty - 1;
+
   if (newQty <= 0) {
-    await supabase.from("stocks").delete().eq("id", data.id);
+    await supabaseClient
+      .from("stocks")
+      .delete()
+      .eq("id", data.id);
   } else {
-    await supabase.from("stocks").update({ qty: newQty }).eq("id", data.id);
+    await supabaseClient
+      .from("stocks")
+      .update({ qty: newQty })
+      .eq("id", data.id);
   }
 
-  await supabase.from("history").insert({
+  await supabaseClient.from("history").insert({
     date: new Date(),
-    user: userInput.value || "未入力",
+    user,
     type: "出庫",
     name,
     qty: 1
@@ -92,27 +163,42 @@ async function ship(name) {
   loadAll();
 }
 
+/* =========================
+   表示
+   ========================= */
 function renderStocks(stocks) {
-  stockTable.innerHTML = `<tr><th>商品</th><th>数量</th><th>操作</th></tr>`;
+  stockTable.innerHTML =
+    "<tr><th>商品</th><th>数量</th><th>操作</th></tr>";
+
   stocks.forEach(s => {
     const tr = stockTable.insertRow();
     if (s.qty <= ALERT_QTY) tr.className = "low";
+
     tr.innerHTML = `
       <td>${s.name}</td>
       <td>${s.qty}</td>
-      <td><button onclick="ship('${s.name}')">出庫</button></td>`;
+      <td>
+        <button onclick="shipItem('${s.name}')">出庫</button>
+      </td>
+    `;
   });
 }
 
 function renderHistory(history) {
-  historyTable.innerHTML = `<tr><th>日時</th><th>ユーザー</th><th>種別</th><th>商品</th><th>数量</th></tr>`;
+  historyTable.innerHTML =
+    "<tr><th>日時</th><th>ユーザー</th><th>種別</th><th>商品</th><th>数量</th></tr>";
+
   history.forEach(h => {
-    historyTable.insertRow().innerHTML =
-      `<td>${h.date}</td><td>${h.user}</td><td>${h.type}</td><td>${h.name}</td><td>${h.qty}</td>`;
+    const tr = historyTable.insertRow();
+    tr.innerHTML = `
+      <td>${h.date}</td>
+      <td>${h.user}</td>
+      <td>${h.type}</td>
+      <td>${h.name}</td>
+      <td>${h.qty}</td>
+    `;
   });
 }
-
-loadAll();
 </script>
 
 </body>
