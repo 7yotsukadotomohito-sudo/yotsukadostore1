@@ -282,7 +282,7 @@
       width: 100%;
     }
     table{
-      min-width: 860px; /* 横スクロール前提 */
+      min-width: 920px; /* 横スクロール前提 */
     }
   }
 </style>
@@ -294,7 +294,7 @@
   <header>
     <div class="title">
       <h1>在庫管理システム</h1>
-      <div class="subtitle">URLで即利用 / 編集はPINで制御（ログインなし）</div>
+      <div class="subtitle">UI v2（反映確認用） / URLで即利用 / 編集はPINで制御（ログインなし）</div>
     </div>
 
     <div class="topActions">
@@ -414,7 +414,7 @@
   <div class="card tableCard" style="margin-top:12px; margin-bottom:18px;">
     <div class="tableHeader">
       <h2>入出庫履歴</h2>
-      <div class="hint">最新が上</div>
+      <div class="hint">東京時間（JST）で表示 / 最新が上</div>
     </div>
     <div class="tableWrap">
       <table id="historyTable"></table>
@@ -478,7 +478,6 @@ function checkPin() {
 
 /* ========= Load & Render ========= */
 window.onload = async () => {
-  // バッジ表示
   document.getElementById("alertBadge").textContent = String(ALERT_QTY);
   document.getElementById("alertLabel").textContent = String(ALERT_QTY);
 
@@ -509,7 +508,7 @@ function renderStocks(stocks) {
       <th style="width:160px;">SKU</th>
       <th>商品</th>
       <th style="width:120px; text-align:right;">数量</th>
-      <th style="width:260px;">操作</th>
+      <th style="width:380px;">操作</th>
     </tr>`;
 
   if (!stocks.length){
@@ -528,7 +527,8 @@ function renderStocks(stocks) {
       <td>${escapeHtml(s.name)}</td>
       <td class="qty">${qty}</td>
       <td>
-        <button class="btn-primary btn-small" onclick="shipItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">出庫</button>
+        <button class="btn-primary btn-small" onclick="shipItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">出庫(-1)</button>
+        <button class="btn-ghost btn-small" onclick="shipItemQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">数量出庫</button>
         <button class="btn-ghost btn-small" onclick="editQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}', ${qty})">編集</button>
         <button class="btn-danger btn-small" onclick="deleteItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name)}')">削除</button>
       </td>
@@ -540,7 +540,7 @@ function renderHistory(history) {
   const table = document.getElementById("historyTable");
   table.innerHTML = `
     <tr>
-      <th style="width:190px;">日時</th>
+      <th style="width:190px;">日時（JST）</th>
       <th style="width:120px;">ユーザー</th>
       <th style="width:120px;">種別</th>
       <th style="width:160px;">SKU</th>
@@ -642,7 +642,7 @@ async function addItemManual() {
   await loadAll();
 }
 
-/* ========= 出庫 / 編集 / 削除 ========= */
+/* ========= 出庫（-1）/ 数量出庫 / 編集 / 削除 ========= */
 async function shipItem(sku, name) {
   if (!checkPin()) return;
 
@@ -664,9 +664,51 @@ async function shipItem(sku, name) {
     date: new Date().toISOString(),
     user: currentUser(),
     type: "出庫",
-    sku: sku || null,
+    sku: ex.data.sku || null,
     name: ex.data.name,
     qty: 1
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+}
+
+// 数量出庫（追加ボタン）
+async function shipItemQty(sku, name) {
+  if (!checkPin()) return;
+
+  const ex = await findStockRow(sku, name);
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return;
+
+  const current = Number(ex.data.qty || 0);
+
+  const input = prompt(
+    `数量出庫（SKU: ${sku||"-"} / 商品: ${ex.data.name}）\n現在: ${current}\n出庫数量（1以上）`,
+    "1"
+  );
+  if (input === null) return;
+
+  const n = Number(input);
+  if (!Number.isFinite(n) || n <= 0) return alert("1以上の数字を入力してください");
+
+  const newQty = current - n;
+
+  if (newQty <= 0) {
+    const del = await supabaseClient.from("stocks").delete().eq("id", ex.data.id);
+    if (del.error) return showErr("stocks delete 失敗", del.error);
+  } else {
+    const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
+    if (up.error) return showErr("stocks update 失敗", up.error);
+  }
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "出庫",
+    sku: ex.data.sku || null,
+    name: ex.data.name,
+    qty: n
   });
   if (hin.error) return showErr("history insert 失敗", hin.error);
 
@@ -771,7 +813,7 @@ async function exportHistoryCSV() {
   downloadText(`history_${todayStr()}.csv`, csv);
 }
 
-/* ========= CSV Import（SKU or Name / delta or qty） ========= */
+/* ========= CSV Import（SKU or Name / delta or qty） + レポート ========= */
 function parseCSV(text) {
   const rows = [];
   let row = [];
@@ -802,9 +844,26 @@ async function importStocksCSV(inputEl) {
   const file = inputEl.files?.[0];
   if (!file) return;
 
+  setStatus("CSV読み込み中…", true);
+
   const text = await file.text();
   const rows = parseCSV(text).map(r => r.map(c => (c ?? "").trim())).filter(r => r.length >= 2);
+  if (!rows.length) {
+    alert("CSVが空です");
+    inputEl.value = "";
+    return;
+  }
 
+  // ===== レポート集計 =====
+  let countProcessed = 0;
+  let countUpdated = 0;
+  let countInserted = 0;
+  let countDeleted = 0;
+  let countSkipped = 0;
+  const errors = [];
+  const pushError = (line, msg) => errors.push(`行${line}: ${msg}`);
+
+  // ヘッダー判定（sku,name,delta or sku,name,qty or name,qty）
   const header = rows[0].map(x => x.toLowerCase());
   const hasHeader = header.includes("name") || header.includes("sku") || header.includes("qty") || header.includes("delta");
 
@@ -826,81 +885,144 @@ async function importStocksCSV(inputEl) {
     else { idxSku = 0; idxName = 1; idxValue = 2; }
   }
 
+  // 既存をまとめて取得してMap化（速度用）
   const existing = await supabaseClient.from("stocks").select("*");
   if (existing.error) return showErr("既存在庫取得失敗", existing.error);
 
   const bySku = new Map((existing.data||[]).filter(x=>x.sku).map(x => [x.sku, x]));
   const byName = new Map((existing.data||[]).map(x => [x.name, x]));
 
-  for (const r of dataRows) {
-    const sku = idxSku >= 0 ? (r[idxSku] || "").trim() : "";
-    const name = (r[idxName] || "").trim();
-    const valRaw = (r[idxValue] || "").trim();
-    if (!name && !sku) continue;
+  setStatus("CSV取り込み中…", true);
 
-    const num = Number(valRaw);
-    if (!Number.isFinite(num)) continue;
+  for (let i = 0; i < dataRows.length; i++) {
+    const r = dataRows[i];
+    const lineNo = hasHeader ? (i + 2) : (i + 1); // CSV上の行番号目安
 
-    const found = sku ? bySku.get(sku) : byName.get(name);
+    try{
+      const sku = idxSku >= 0 ? (r[idxSku] || "").trim() : "";
+      const name = (r[idxName] || "").trim();
+      const valRaw = (r[idxValue] || "").trim();
+      if (!name && !sku) { countSkipped++; continue; }
 
-    if (!found) {
-      const startQty = mode === "delta" ? num : num;
-      if (startQty <= 0) continue;
+      const num = Number(valRaw);
+      if (!Number.isFinite(num)) {
+        countSkipped++;
+        pushError(lineNo, `数量が数値ではありません（"${valRaw}"）`);
+        continue;
+      }
 
-      const ins = await supabaseClient.from("stocks").insert({ sku: sku || null, name: name || "(no name)", qty: startQty });
-      if (ins.error) return showErr(`CSV insert失敗（${sku||name}）`, ins.error);
+      const found = sku ? bySku.get(sku) : byName.get(name);
+
+      if (!found) {
+        // 無ければ新規
+        const startQty = num; // deltaでもsetでも、初回はnum
+        if (startQty <= 0) { countSkipped++; continue; }
+
+        const ins = await supabaseClient.from("stocks").insert({ sku: sku || null, name: name || "(no name)", qty: startQty });
+        if (ins.error) { pushError(lineNo, `insert失敗（${sku||name}）: ${ins.error.message}`); continue; }
+
+        countInserted++; countProcessed++;
+
+        const hin = await supabaseClient.from("history").insert({
+          date: new Date().toISOString(),
+          user: currentUser(),
+          type: mode === "delta" ? "CSV増減" : "CSV上書き",
+          sku: sku || null,
+          name: name || "(no name)",
+          qty: Math.abs(startQty)
+        });
+        if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
+        continue;
+      }
+
+      // 既存あり：更新
+      let newQty;
+      if (mode === "delta") newQty = Number(found.qty) + num;
+      else newQty = num;
+
+      if (newQty <= 0) {
+        const del = await supabaseClient.from("stocks").delete().eq("id", found.id);
+        if (del.error) { pushError(lineNo, `delete失敗（${found.sku||found.name}）: ${del.error.message}`); continue; }
+
+        countDeleted++; countProcessed++;
+
+        // map更新
+        if (found.sku) bySku.delete(found.sku);
+        byName.delete(found.name);
+      } else {
+        const up = await supabaseClient.from("stocks").update({ qty: newQty, sku: sku || found.sku || null, name: name || found.name }).eq("id", found.id);
+        if (up.error) { pushError(lineNo, `update失敗（${found.sku||found.name}）: ${up.error.message}`); continue; }
+
+        countUpdated++; countProcessed++;
+
+        // map更新
+        const updated = { ...found, qty: newQty, sku: (sku || found.sku || null), name: (name || found.name) };
+        if (found.sku && updated.sku !== found.sku) bySku.delete(found.sku);
+        if (updated.sku) bySku.set(updated.sku, updated);
+        byName.delete(found.name);
+        byName.set(updated.name, updated);
+      }
 
       const hin = await supabaseClient.from("history").insert({
         date: new Date().toISOString(),
         user: currentUser(),
         type: mode === "delta" ? "CSV増減" : "CSV上書き",
-        sku: sku || null,
-        name: name || "(no name)",
-        qty: Math.abs(startQty)
+        sku: (sku || found.sku || null),
+        name: (name || found.name),
+        qty: Math.abs(num)
       });
-      if (hin.error) return showErr("history insert 失敗", hin.error);
-      continue;
+      if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
+
+    }catch(e){
+      countSkipped++;
+      pushError(lineNo, `例外: ${e?.message || String(e)}`);
     }
-
-    let newQty;
-    if (mode === "delta") newQty = Number(found.qty) + num;
-    else newQty = num;
-
-    if (newQty <= 0) {
-      const del = await supabaseClient.from("stocks").delete().eq("id", found.id);
-      if (del.error) return showErr(`CSV delete失敗（${found.sku||found.name}）`, del.error);
-    } else {
-      const up = await supabaseClient.from("stocks").update({ qty: newQty, sku: sku || found.sku || null, name: name || found.name }).eq("id", found.id);
-      if (up.error) return showErr(`CSV update失敗（${found.sku||found.name}）`, up.error);
-    }
-
-    const hin = await supabaseClient.from("history").insert({
-      date: new Date().toISOString(),
-      user: currentUser(),
-      type: mode === "delta" ? "CSV増減" : "CSV上書き",
-      sku: (sku || found.sku || null),
-      name: (name || found.name),
-      qty: Math.abs(num)
-    });
-    if (hin.error) return showErr("history insert 失敗", hin.error);
   }
 
   inputEl.value = "";
   await loadAll();
-  alert("CSVインポート完了");
+
+  const summary =
+`CSVインポート完了
+処理: ${countProcessed}件（insert:${countInserted} / update:${countUpdated} / delete:${countDeleted}）
+スキップ: ${countSkipped}件
+エラー: ${errors.length}件`;
+
+  if (errors.length) {
+    const head = errors.slice(0, 20).join("\n");
+    alert(summary + "\n\n--- エラー詳細（最大20件表示） ---\n" + head + (errors.length > 20 ? `\n…他 ${errors.length - 20} 件` : ""));
+    setStatus(`CSV完了（エラー ${errors.length}件）`, false);
+  } else {
+    alert(summary);
+    setStatus("CSV完了（エラーなし）", true);
+  }
 }
 
-/* ========= formatting / escaping ========= */
+/* ========= 日時: 東京時間（JST）で表示 ========= */
 function formatDate(iso){
   try{
     const d = new Date(iso);
     if (isNaN(d.getTime())) return String(iso);
-    const pad = (n)=>String(n).padStart(2,"0");
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+    const parts = new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).formatToParts(d);
+
+    const get = (type) => parts.find(p => p.type === type)?.value || "";
+    return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
   }catch(e){
     return String(iso);
   }
 }
+
+/* ========= escaping ========= */
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
