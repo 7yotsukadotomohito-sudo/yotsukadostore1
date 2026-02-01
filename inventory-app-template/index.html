@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>在庫管理システム（UI v8）</title>
+<title>在庫管理システム</title>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
@@ -23,1874 +23,2360 @@
     --ghostHover:#d1d5db;
 
     --goodBg:#ecfdf5;
+    --goodLine:#86efac;
     --badBg:#fff1f2;
-    --warnBg:#fff7ed;
+    --badLine:#fca5a5;
 
-    --radius:16px;
-    --shadow: 0 8px 30px rgba(17,24,39,.08);
+    --lowBg:#fff1f2;
+    --lowText:#9f1239;
+
+    --radius:14px;
+    --shadow:0 8px 24px rgba(17,24,39,.08);
   }
 
   *{ box-sizing:border-box; }
   body{
     margin:0;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-    background:var(--bg);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Helvetica Neue", Arial;
     color:var(--text);
+    background:var(--bg);
+  }
+
+  code{
+    background:#f3f4f6;
+    padding:2px 6px;
+    border-radius:8px;
+    font-size: 12px;
+  }
+
+  .container{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 18px;
   }
 
   header{
-    position: sticky;
-    top:0;
-    z-index: 5;
-    background: rgba(246,247,251,.86);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--line);
-  }
-
-  .wrap{
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 14px 14px 80px;
-  }
-
-  .topbar{
     display:flex;
     align-items:center;
-    gap:10px;
-    justify-content: space-between;
+    justify-content:space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap:wrap;
   }
 
   .title{
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: .02em;
-    display:flex; align-items:center; gap:10px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
   }
-  .pill{
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
-    color: #3730a3;
-    font-weight: 700;
+  h1{
+    font-size: 22px;
+    margin:0;
+    letter-spacing: .02em;
+  }
+  .subtitle{
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .topActions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px;
   }
 
   .grid{
     display:grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-    margin-top: 12px;
   }
-  @media (max-width: 960px){
-    .grid{ grid-template-columns: 1fr; }
+  .grid3{
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
   }
 
-  .card{
-    background:var(--card);
+  @media (max-width: 980px){
+    .grid, .grid3{ grid-template-columns: 1fr; }
+  }
+
+  .sectionTitle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 8px;
+    margin: 0 0 10px 0;
+  }
+  .sectionTitle h2{
+    margin:0;
+    font-size: 16px;
+  }
+  .hint{
+    color:var(--muted);
+    font-size: 12px;
+  }
+
+  #status{
+    padding: 10px 12px;
+    border-radius: 12px;
     border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 14px;
+    background: #fff;
+    margin-bottom: 12px;
+    font-size: 13px;
   }
-  .card h2{
-    margin:0 0 10px;
-    font-size: 14px;
-    color: var(--muted);
-    font-weight: 800;
-    letter-spacing: .02em;
-  }
+  #status.good{ background: var(--goodBg); border-color: var(--goodLine); }
+  #status.bad{ background: var(--badBg); border-color: var(--badLine); }
 
   .row{
     display:flex;
-    gap:10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  label{
-    font-size: 12px;
-    color: var(--muted);
-    font-weight: 700;
-    display:block;
-    margin-bottom: 4px;
-  }
-
-  input, select, textarea{
-    width: 100%;
-    padding: 10px 10px;
-    border-radius: 12px;
-    border: 1px solid var(--line);
-    outline: none;
-    background: #fff;
-    color: var(--text);
-  }
-  input:focus, select:focus, textarea:focus{
-    border-color: #93c5fd;
-    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+    gap: 10px;
+    flex-wrap:wrap;
+    align-items:center;
   }
 
   .field{
-    min-width: 140px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    min-width: 180px;
     flex: 1;
   }
-  .field.small{ min-width: 110px; flex: 0 0 auto; }
-  .field.wide{ min-width: 240px; flex: 2; }
-
-  .btn{
-    border: 1px solid transparent;
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-weight: 800;
-    cursor: pointer;
-    user-select: none;
-  }
-  .btn.primary{ background: var(--primary); color:#fff; }
-  .btn.primary:hover{ background: var(--primaryHover); }
-  .btn.danger{ background: var(--danger); color:#fff; }
-  .btn.danger:hover{ background: var(--dangerHover); }
-  .btn.ghost{ background: var(--ghost); color: var(--text); border-color: var(--line); }
-  .btn.ghost:hover{ background: var(--ghostHover); }
-  .btn:disabled{ opacity:.55; cursor:not-allowed; }
-
-  .hint{
+  .field label{
     font-size: 12px;
     color: var(--muted);
-    line-height: 1.55;
-    margin-top: 8px;
   }
 
-  .split{
-    display:flex;
-    gap:10px;
-    flex-wrap: wrap;
-    align-items: flex-end;
-  }
-
-  .kpi{
-    display:flex; gap:10px; flex-wrap: wrap;
-    margin-top: 10px;
-  }
-  .kpi .box{
-    border: 1px solid var(--line);
-    border-radius: 14px;
+  input[type="text"], input[type="password"], input[type="number"], input[type="date"], select{
+    width: 100%;
     padding: 10px 12px;
-    min-width: 160px;
-    background: #fff;
-  }
-  .kpi .v{ font-size: 18px; font-weight: 900; }
-  .kpi .k{ font-size: 12px; color: var(--muted); font-weight: 800; }
-
-  .tableWrap{
-    overflow:auto;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-  }
-  table{
-    width:100%;
-    border-collapse: collapse;
-    min-width: 860px;
+    border-radius: 12px;
+    border:1px solid var(--line);
+    outline: none;
     background:#fff;
+    font-size: 14px;
+  }
+  input:focus, select:focus{
+    border-color: rgba(37,99,235,.55);
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+  }
+
+  input[type="file"]{ padding: 10px 0; }
+
+  button{
+    border: none;
+    border-radius: 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: transform .02s ease, background .15s ease, opacity .15s ease;
+    user-select:none;
+    white-space:nowrap;
+  }
+  button:active{ transform: translateY(1px); }
+  button:disabled{ opacity:.55; cursor:not-allowed; }
+
+  .btn-primary{ background: var(--primary); color: #fff; }
+  .btn-primary:hover{ background: var(--primaryHover); }
+
+  .btn-danger{ background: var(--danger); color: #fff; }
+  .btn-danger:hover{ background: var(--dangerHover); }
+
+  .btn-ghost{ background: var(--ghost); color: var(--text); }
+  .btn-ghost:hover{ background: var(--ghostHover); }
+
+  .btn-small{
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  /* さらに小さめ（操作行1行用） */
+  .btn-tiny{
+    padding: 6px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .tableCard{ padding: 0; overflow: hidden; }
+  .tableHeader{
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    flex-wrap:wrap;
+  }
+  .tableHeader h2{
+    margin:0;
+    font-size: 16px;
+  }
+  .tableWrap{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 表っぽく：罫線 */
+  table{
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1180px;
+    background: #fff;
+    border: 1px solid var(--line);
   }
   th, td{
+    padding: 8px 10px;          /* 行を小さめに */
+    text-align: left;
+    font-size: 13px;            /* 行を小さめに */
     border: 1px solid var(--line);
-    padding: 10px 10px;
-    font-size: 13px;
-    vertical-align: middle;
+    vertical-align: top;
   }
   th{
-    background:#f9fafb;
-    color: var(--muted);
-    font-weight: 900;
+    background: #fafafa;
+    color:#374151;
+    font-weight: 800;
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 1;
   }
-  td .muted{ color: var(--muted); font-weight: 700; font-size: 12px; }
 
-  .nameCell{
-    max-width: 520px;
+  td.qty{
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  td.center{ text-align:center; }
+  .muted{ color:var(--muted); font-size: 12px; }
+
+  tr.low-stock td{
+    background: var(--lowBg);
+    color: var(--lowText);
+  }
+
+  /* 商品名を見やすく */
+  td.nameCell{
+    min-width: 340px;
+    max-width: 560px;
     white-space: normal;
     word-break: break-word;
+    font-size: 13px;
+    line-height: 1.35;
   }
 
-  .tag{
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--muted);
+    background:#fff;
+  }
+
+  .kv{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .kv b{
+    font-variant-numeric: tabular-nums;
+  }
+
+  details > summary{
+    cursor:pointer;
+    user-select:none;
+    color:#111827;
+    font-weight:900;
+    list-style:none;
+  }
+  details > summary::-webkit-details-marker{ display:none; }
+  details{
+    border:1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background:#fff;
+  }
+
+  /* 数量セル：数値と出庫バッジを同じ行に */
+  .qtyInline{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap: 8px;
+    white-space:nowrap;
+  }
+  .qtyNum{
+    font-weight: 900;
+    font-size: 14px;
+  }
+
+  .badgeGroup{
     display:inline-flex;
     align-items:center;
     gap:6px;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: 12px;
-    font-weight: 900;
-    border: 1px solid var(--line);
-    background: #fff;
   }
-  .tag.bad{ background: var(--badBg); border-color: #fecaca; color: #991b1b; }
-  .tag.good{ background: var(--goodBg); border-color: #bbf7d0; color: #065f46; }
-  .tag.warn{ background: var(--warnBg); border-color: #fed7aa; color: #9a3412; }
-
-  .badge{
+  .mBadge{
     display:inline-flex;
     align-items:center;
+    gap:4px;
+    padding: 4px 8px;
     border-radius: 999px;
-    padding: 2px 8px;
-    font-size: 11px;
-    font-weight: 900;
     border: 1px solid var(--line);
     background:#fff;
-    margin-left: 6px;
+    font-size: 11px;
     color: var(--muted);
   }
-
-  details{
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: #fff;
-    box-shadow: var(--shadow);
-    margin-top: 12px;
-    overflow:hidden;
-  }
-  summary{
-    cursor:pointer;
-    user-select:none;
-    padding: 14px;
-    font-weight: 900;
+  .mBadge b{
     color: var(--text);
-    background: #fff;
-  }
-  details > .content{
-    padding: 14px;
-    border-top: 1px solid var(--line);
-    background: #fff;
+    font-variant-numeric: tabular-nums;
   }
 
-  .mono{
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* 操作：1行固定＆小さめ */
+  td.opsCell{ white-space:nowrap; }
+  .opLine{
+    display:flex;
+    flex-wrap:nowrap;
+    gap: 6px;
+    align-items:center;
+    white-space:nowrap;
   }
 
-  .hr{ height:1px; background:var(--line); margin: 12px 0; }
+  .checkLine{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .checkLine input[type="checkbox"]{
+    width:auto;
+    transform: translateY(1px);
+  }
 
-  .right{ margin-left:auto; }
+  @media (max-width: 600px){
+    .row.actions{ flex-direction: column; align-items: stretch; }
+    .row.actions button{ width: 100%; }
+    table{ min-width: 1280px; }
+  }
 </style>
 </head>
 
 <body>
-<header>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="title">在庫管理システム <span class="pill">UI v8</span></div>
-      <div class="row" style="gap:8px">
-        <span class="tag" id="connTag">接続: 未確認</span>
-        <button class="btn ghost" onclick="loadAll()">再読み込み</button>
-      </div>
+<div class="container">
+
+  <header>
+    <div class="title">
+      <h1>在庫管理システム</h1>
+      <div class="subtitle">UI v10 / メイン：検索・入庫・CSV/メンテ・在庫一覧（履歴/棚卸/バックアップは下に退避）</div>
     </div>
-  </div>
-</header>
 
-<div class="wrap">
+    <div class="topActions">
+      <button class="btn-ghost" onclick="loadAll()">最新に更新</button>
+      <span class="pill">既定アラート: <b id="alertBadge">3</b>（SKU別に上書き可）</span>
+      <span class="pill">表示: <b id="viewBadge">全件</b></span>
+      <span class="pill">Undo: <b id="undoBadge">なし</b></span>
+    </div>
+  </header>
 
-  <div class="grid">
-    <div class="card">
+  <div id="status" class="good">状態: 起動中…</div>
+
+  <!-- 1) 検索 / 2) 不足だけ表示 -->
+  <div class="card" style="margin-bottom:12px;">
+    <div class="sectionTitle">
       <h2>検索 / 表示</h2>
-      <div class="row">
-        <div class="field wide">
-          <label>検索（SKU / 商品名）</label>
-          <input id="q" placeholder="例: 1234 / テールライト" oninput="renderStocks()" />
-        </div>
-
-        <div class="field small">
-          <label>表示</label>
-          <select id="viewMode" onchange="renderStocks()">
-            <option value="all">全件</option>
-            <option value="low">不足だけ（qty &lt; alert）</option>
-          </select>
-        </div>
-
-        <div class="field small">
-          <label>赤ハイライト</label>
-          <select id="highlightMode" onchange="renderStocks()">
-            <option value="le">qty ≤ alert</option>
-            <option value="lt">qty &lt; alert</option>
-          </select>
-        </div>
-
-        <div class="field small">
-          <label>既定アラート</label>
-          <input id="defaultAlert" type="number" min="0" step="1" value="3" onchange="DEFAULT_ALERT_QTY = toInt(this.value,3); renderStocks();">
-        </div>
+      <div class="hint">SKU/商品名で絞り込み。不足だけ表示も可能</div>
+    </div>
+    <div class="row actions">
+      <div class="field" style="min-width:320px;">
+        <label>検索（SKU または 商品名）</label>
+        <input id="stockSearch" type="text" placeholder="例: A001 / りんご" oninput="applyStockView()" />
       </div>
 
-      <div class="kpi">
-        <div class="box">
-          <div class="v" id="kpiTotal">-</div>
-          <div class="k">SKU数</div>
-        </div>
-        <div class="box">
-          <div class="v" id="kpiLow">-</div>
-          <div class="k">不足（qty &lt; alert）</div>
-        </div>
-        <div class="box">
-          <div class="v" id="kpiQty">-</div>
-          <div class="k">合計在庫</div>
-        </div>
+      <div class="field" style="max-width:240px;">
+        <label>表示モード</label>
+        <select id="stockViewMode" onchange="applyStockView()">
+          <option value="all">全件</option>
+          <option value="low">不足だけ（qty &lt; alert）</option>
+        </select>
       </div>
 
-      <div class="hint">
-        不足判定は <b>qty &lt; alert</b> に統一。赤ハイライトは見た目だけ切替できます。
+      <div class="field" style="max-width:240px;">
+        <label>一覧ハイライト条件</label>
+        <select id="highlightMode" onchange="applyStockView()">
+          <option value="le">赤ハイライト: qty ≤ alert</option>
+          <option value="lt">赤ハイライト: qty &lt; alert</option>
+        </select>
       </div>
+
+      <button class="btn-ghost" onclick="resetStockView()">絞り込みクリア</button>
     </div>
 
-    <div class="card">
-      <h2>編集PIN / ユーザー</h2>
-
-      <div class="row">
-        <div class="field small">
-          <label>ユーザー名</label>
-          <input id="userName" placeholder="未入力なら「未入力」" oninput="STATE.user = this.value.trim() || '未入力'; saveLocalState();" />
-        </div>
-
-        <div class="field small">
-          <label>PIN</label>
-          <input id="pin" type="password" placeholder="編集PIN" />
-        </div>
-
-        <button class="btn primary" onclick="applyPin()">PIN適用</button>
-        <button class="btn ghost" onclick="forgetPin()">PINを忘れる</button>
-
-        <span class="tag" id="pinTag">編集: OFF</span>
-      </div>
-
-      <div class="hint">
-        編集は共有PIN程度の運用想定（本気のセキュリティではありません）。
-      </div>
-
-      <div class="hr"></div>
-
-      <div class="row">
-        <div class="field small">
-          <label>不足CSV</label>
-          <button class="btn ghost" onclick="downloadLowStockCsv()">low_stock_*.csv をDL</button>
-        </div>
-
-        <div class="field small">
-          <label>alert一括設定</label>
-          <button class="btn ghost" onclick="fillDefaultAlertToNulls()">未設定(alert_qty=null)を既定に埋める</button>
-        </div>
-      </div>
+    <div class="kv muted" style="margin-top:10px;">
+      <span>不足判定（不足CSV/不足表示）: <b>qty &lt; alert</b></span>
+      <span>差 = max(0, alert - qty)</span>
+      <span>在庫一覧の出庫バッジ: <b>先月 + 2ヶ月前</b>（今月は除外）</span>
     </div>
   </div>
 
   <div class="grid">
     <div class="card">
-      <h2>入庫（手入力）</h2>
-      <div class="row">
-        <div class="field small">
-          <label>SKU（必須）</label>
-          <input id="inSku" placeholder="SKU" />
-        </div>
-        <div class="field wide">
-          <label>商品名（任意）</label>
-          <input id="inName" placeholder="商品名" />
-        </div>
-        <div class="field small">
-          <label>数量（必須）</label>
-          <input id="inQty" type="number" step="1" min="0" placeholder="例: 10" />
-        </div>
-        <div class="field small">
-          <label>アラート（任意）</label>
-          <input id="inAlert" type="number" step="1" min="0" placeholder="空なら維持/既定" />
-        </div>
-
-        <button class="btn primary" onclick="stockInManual()">入庫</button>
+      <div class="sectionTitle">
+        <h2>編集PIN</h2>
+        <div class="hint">※PINはブラウザに記憶されます</div>
       </div>
-
-      <div class="hint">
-        SKUが既に存在する場合は数量加算。商品名/アラートは入力があれば更新。
+      <div class="row">
+        <div class="field" style="max-width:260px;">
+          <label>PIN（操作する人だけ入力）</label>
+          <input id="pinInput" type="password" placeholder="PIN" />
+        </div>
+        <button class="btn-ghost" onclick="clearSavedPin()">PINを忘れる</button>
+      </div>
+      <div class="muted" style="margin-top:10px;">
+        閲覧は誰でもOK / 編集はPIN入力が必要
       </div>
     </div>
 
     <div class="card">
-      <h2>出庫（手入力）</h2>
+      <div class="sectionTitle">
+        <h2>ユーザー名（履歴用）</h2>
+        <div class="hint">※未入力でもOK</div>
+      </div>
       <div class="row">
-        <div class="field small">
-          <label>SKU</label>
-          <input id="outSku" placeholder="SKU" />
+        <div class="field" style="max-width:260px;">
+          <label>履歴に残す名前</label>
+          <input id="userInput" placeholder="例：山田" />
         </div>
-        <div class="field small">
-          <label>数量</label>
-          <input id="outQty" type="number" step="1" min="1" value="1" />
-        </div>
-
-        <button class="btn danger" onclick="stockOutManual(1)">出庫(-1)</button>
-        <button class="btn danger" onclick="stockOutManual(null)">数量出庫</button>
       </div>
-
-      <div class="hint">
-        在庫が0以下になったら stocks から削除（在庫0は保持しない設計）。
+      <div class="muted" style="margin-top:10px;">
+        「誰が操作したか」を残したいときに入力
       </div>
     </div>
   </div>
 
+  <!-- 入庫 -->
   <div class="card" style="margin-top:12px;">
-    <h2>在庫一覧</h2>
-    <div class="tableWrap">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:140px;">SKU</th>
-            <th>商品</th>
-            <th style="width:140px;">数量</th>
-            <th style="width:120px;">アラート</th>
-            <th style="width:90px;">差</th>
-            <th style="width:320px;">操作</th>
-          </tr>
-        </thead>
-        <tbody id="stockBody"></tbody>
-      </table>
+    <div class="sectionTitle">
+      <h2>入庫（手入力）</h2>
+      <div class="hint">SKU必須 / 商品名は任意 / アラート閾値も設定可</div>
     </div>
 
-    <div class="hint">
-      数量右のバッジは「先月」「2ヶ月前」の出庫合計（今月は除外）。
+    <div class="row actions">
+      <div class="field">
+        <label>SKU（必須）</label>
+        <input id="skuInput" placeholder="SKU（必須）" />
+      </div>
+      <div class="field">
+        <label>商品名（任意）</label>
+        <input id="nameInput" placeholder="商品名（任意）" />
+      </div>
+      <div class="field" style="max-width:160px;">
+        <label>数量（入庫）</label>
+        <input id="qtyInput" type="number" placeholder="例：10" />
+      </div>
+      <div class="field" style="max-width:220px;">
+        <label>アラート閾値（任意）</label>
+        <input id="alertInput" type="number" placeholder="例：3（空欄＝既定）" />
+      </div>
+      <button class="btn-primary" onclick="addItemManual()">数量入庫</button>
+    </div>
+
+    <div class="muted" style="margin-top:8px;">
+      SKUが既に存在する場合は在庫を加算（商品名/閾値は入力があれば更新）
     </div>
   </div>
 
-  <details open>
-    <summary>CSV / メンテ + 発注アシスト</summary>
-    <div class="content">
-      <div class="grid">
-        <div class="card" style="box-shadow:none;">
-          <h2>在庫CSVインポート（増減 / 上書き）</h2>
+  <!-- CSV / メンテ（メイン） + 発注アシスト -->
+  <div class="grid" style="margin-top:12px;">
+    <div class="card">
+      <div class="sectionTitle">
+        <h2>CSV / メンテ</h2>
+        <div class="hint">在庫CSVインポート / alert_qty一括 / 棚卸CSV / 出庫CSV（月指定）</div>
+      </div>
 
-          <div class="row">
-            <div class="field">
-              <label>CSVテキスト（貼り付け可）</label>
-              <textarea id="stockCsvText" rows="8" placeholder="形式A: sku,name,delta,alert_qty  /  形式B: sku,name,qty,alert_qty"></textarea>
-            </div>
-          </div>
+      <div class="row actions" style="margin-top:6px;">
+        <button class="btn-ghost" onclick="bulkFillAlertQty()">未設定のalert_qtyを既定値に一括設定</button>
+        <span class="muted">（既定: <b id="alertLabel">3</b>）</span>
+      </div>
 
-          <div class="row">
-            <div class="field small">
-              <label>モード</label>
-              <select id="stockCsvMode">
-                <option value="delta">増減（delta）</option>
-                <option value="overwrite">上書き（qty）</option>
-              </select>
-            </div>
-            <button class="btn primary" onclick="importStockCsv()">在庫CSVインポート実行</button>
-            <button class="btn ghost" onclick="undoLast('stock_import')">直前の在庫CSVインポートを取り消す</button>
-          </div>
-
-          <div class="hint">
-            Undoは事故防止のため、取り消し時に confirm を2回出します。<br>
-            ※Undoを使うには <b>history に batch_id カラム</b>が必要（下の「Undo初期設定」参照）。
-          </div>
+      <div style="margin-top:14px; border-top:1px dashed var(--line); padding-top:12px;">
+        <div style="font-weight:900; margin-bottom:6px;">在庫CSVインポート（増減/上書き）</div>
+        <div class="row">
+          <input type="file" accept=".csv,text/csv" onchange="importStocksCSV(this)" />
+          <button class="btn-ghost btn-small" onclick="undoLastImport()">ひとつ前を取り消す</button>
         </div>
-
-        <div class="card" style="box-shadow:none;">
-          <h2>棚卸CSVインポート（name更新対応）</h2>
-
-          <div class="row">
-            <div class="field">
-              <label>CSVテキスト（貼り付け可）</label>
-              <textarea id="invCsvText" rows="8" placeholder="sku,name,qty（ヘッダ有無OK） / sku,qty（2列でもOK）"></textarea>
-            </div>
-          </div>
-
-          <div class="row">
-            <button class="btn primary" onclick="importInventoryCsv()">棚卸CSVインポート実行</button>
-            <button class="btn ghost" onclick="undoLast('inventory_import')">直前の棚卸CSVを取り消す</button>
-          </div>
-
-          <div class="hint">
-            CSVのnameが空なら既存維持。nameが入っていれば stocks.name を更新。
-          </div>
+        <div class="muted" style="margin-top:8px; line-height:1.55;">
+          形式A（増減）：<code>sku,name,delta,alert_qty</code><br>
+          形式B（上書き）：<code>sku,name,qty,alert_qty</code><br>
+          ※skuが空ならname照合。qty=0は削除扱い。alert_qty空欄は既存維持（新規は既定）。
         </div>
       </div>
 
-      <div class="hr"></div>
-
-      <div class="grid">
-        <div class="card" style="box-shadow:none;">
-          <h2>出庫数CSVアップロード（月指定 / 在庫は変えない）</h2>
-
-          <div class="row">
-            <div class="field small">
-              <label>月（YYYY-MM）</label>
-              <input id="shipCsvMonth" placeholder="例: 2026-01" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="field">
-              <label>CSVテキスト（貼り付け可）</label>
-              <textarea id="shipCsvText" rows="8" placeholder="sku,qty  または  sku,name,qty（ヘッダ有無OK）"></textarea>
-            </div>
-          </div>
-
-          <div class="row">
-            <button class="btn primary" onclick="importShipCsv()">出庫数CSVアップロード</button>
-            <button class="btn ghost" onclick="undoLast('ship_import')">直前の出庫数CSVアップロードを取り消す</button>
-          </div>
-
-          <div class="hint">
-            取り込んだ出庫は history に「出庫（CSV月指定）」として追加（stocksは変更しません）。
-          </div>
+      <div style="margin-top:14px; border-top:1px dashed var(--line); padding-top:12px;">
+        <div style="font-weight:900; margin-bottom:6px;">棚卸CSVインポート（実在個で上書き）</div>
+        <div class="row">
+          <input type="file" accept=".csv,text/csv" onchange="importStocktakeCSV(this)" />
+          <button class="btn-ghost btn-small" onclick="undoLastImport()">ひとつ前を取り消す</button>
         </div>
-
-        <div class="card" style="box-shadow:none;">
-          <h2>発注アシスト（不足→発注CSV）</h2>
-
-          <div class="row">
-            <div class="field small">
-              <label>係数</label>
-              <input id="orderFactor" type="number" step="0.1" min="0" value="1.0" />
-            </div>
-            <div class="field small">
-              <label>最低発注数（任意）</label>
-              <input id="minOrderQty" type="number" step="1" min="0" value="0" />
-            </div>
-            <button class="btn primary" onclick="downloadOrderAssistCsv()">発注CSVをDL</button>
-          </div>
-
-          <div class="hint">
-            <b>新仕様</b>：target = ceil(alert × 係数)<br>
-            在庫が target より少ないSKUは <b>発注数 = target − 現在庫</b>。
-          </div>
+        <div class="muted" style="margin-top:8px; line-height:1.55;">
+          形式：<code>sku,name,qty</code>（ヘッダあり/なし両対応。2列なら <code>sku,qty</code>）<br>
+          ※CSVにあるSKUだけ上書き（差分は履歴に <code>棚卸</code>）。nameが空なら既存維持、入っていれば更新。
         </div>
       </div>
 
-      <div class="hr"></div>
+      <details style="margin-top:14px;">
+        <summary>出庫数CSVアップロード（月指定）</summary>
+        <div class="muted" style="margin-top:10px; line-height:1.7;">
+          例：過去分の出庫実績を「何月分として」取り込みたい時用。<br>
+          取り込み後、在庫一覧の月次バッジ（先月/2ヶ月前）や「SKU別 出庫推移（直近6ヶ月）」に反映されます。
+        </div>
 
-      <details>
-        <summary>Undo初期設定（Supabase SQL）</summary>
-        <div class="content">
-          <div class="hint">
-            Undoを使うには history に <b>batch_id</b> が必要です（このSQLを1回だけ実行）。
+        <div class="checkLine" style="margin-top:10px;">
+          <label class="muted" style="font-weight:900;">
+            <input id="shipReduceStock" type="checkbox" checked />
+            在庫を減らす（チェックONで、SKUごとに qty を出庫数ぶん減らす / 0未満は0に丸める）
+          </label>
+        </div>
+
+        <div class="row actions" style="margin-top:10px;">
+          <div class="field" style="max-width:220px;">
+            <label>出庫として計上する月（YYYY-MM）</label>
+            <input id="shipCsvMonth" type="text" placeholder="例：2025-11" />
           </div>
-          <pre class="mono" style="white-space:pre-wrap; background:#0b1220; color:#e5e7eb; padding:12px; border-radius:12px; border:1px solid #111827; margin-top:10px;">
--- 1) 履歴にID（無ければ）
-alter table history
-add column if not exists id uuid primary key default gen_random_uuid();
-
--- 2) Undo用バッチID
-alter table history
-add column if not exists batch_id uuid;
-
-create index if not exists history_batch_id_idx on history(batch_id);
-          </pre>
+          <div class="field" style="min-width:260px;">
+            <label>出庫CSV（sku,qty）または（sku,name,qty）</label>
+            <input type="file" accept=".csv,text/csv" onchange="importShipCSVWithMonth(this)" />
+          </div>
+          <button class="btn-ghost btn-small" onclick="undoLastImport()">ひとつ前を取り消す</button>
+        </div>
+        <div class="muted" style="margin-top:8px; line-height:1.55;">
+          形式：<code>sku,qty</code> または <code>sku,name,qty</code>（ヘッダあり/なし両対応）<br>
+          ※チェックOFFなら在庫数は変更しません（履歴にだけ「出庫（CSV月指定）」として追加します）
         </div>
       </details>
+
+    </div>
+
+    <div class="card">
+      <div class="sectionTitle">
+        <h2>発注アシスト（不足→発注CSV）</h2>
+        <div class="hint">基準=（アラート×係数）に届いてない分を発注数にする</div>
+      </div>
+
+      <div class="row actions" style="margin-bottom:10px;">
+        <div class="field" style="max-width:160px;">
+          <label>係数（アラート×係数）</label>
+          <input id="orderFactor" type="number" value="1" step="0.1" />
+        </div>
+        <div class="field" style="max-width:160px;">
+          <label>最低発注数（任意）</label>
+          <input id="orderMin" type="number" placeholder="例：5" />
+        </div>
+        <button class="btn-primary" onclick="exportOrderAssistCSV()">発注CSVを作る</button>
+      </div>
+
+      <div class="muted" style="line-height:1.65;">
+        条件：<b>qty &lt; (alert × 係数)</b><br>
+        発注数：<code>ceil( (alert×係数) - qty )</code>（最低発注数があれば下限）<br>
+        出力：<code>sku,name,qty,alert_qty,threshold,order_qty</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- 在庫一覧（メイン） -->
+  <div class="card tableCard" style="margin-top:12px;">
+    <div class="tableHeader">
+      <h2>在庫一覧</h2>
+      <div class="hint">SKU昇順 / 数量の右に「先月・2ヶ月前」の出庫</div>
+    </div>
+    <div class="tableWrap">
+      <table id="stockTable"></table>
+    </div>
+  </div>
+
+  <!-- 退避：SKU別 出庫推移（直近6ヶ月） -->
+  <details style="margin-top:12px;">
+    <summary>SKU別 出庫推移（直近6ヶ月）</summary>
+    <div class="muted" style="margin-top:10px; line-height:1.7;">
+      直近6ヶ月（今月を含む）の「出庫」合計をSKUごとに表示します。<br>
+      ※出庫の種別は「出庫」「出庫（CSV月指定）」など “出庫” を含むものを集計します。
+    </div>
+    <div class="card tableCard" style="margin-top:10px;">
+      <div class="tableHeader">
+        <h2 style="font-size:14px;">SKU別 出庫（月次）</h2>
+        <div class="hint">表示は上で開閉</div>
+      </div>
+      <div class="tableWrap">
+        <table id="skuShip6Table" style="min-width:1100px;"></table>
+      </div>
     </div>
   </details>
 
-  <details>
-    <summary>下に退避（履歴 / 集計 / 棚卸差分 / 出庫推移 / バックアップ）</summary>
-    <div class="content">
-      <div class="grid">
-        <div class="card" style="box-shadow:none;">
-          <h2>SKU別 出庫推移（直近6ヶ月）</h2>
-          <div class="tableWrap">
-            <table style="min-width:820px;">
-              <thead><tr id="shipTrendHead"></tr></thead>
-              <tbody id="shipTrendBody"></tbody>
-            </table>
-          </div>
-          <div class="hint">今月含む直近6ヶ月の出庫合計（typeに「出庫」を含む履歴を集計）。</div>
-        </div>
-
-        <div class="card" style="box-shadow:none;">
-          <h2>棚卸差分レポート（TOP10）</h2>
-          <div class="tableWrap">
-            <table style="min-width:700px;">
-              <thead>
-                <tr>
-                  <th style="width:140px;">SKU</th>
-                  <th>商品</th>
-                  <th style="width:120px;">差分</th>
-                  <th style="width:140px;">日時</th>
-                </tr>
-              </thead>
-              <tbody id="invDiffBody"></tbody>
-            </table>
-          </div>
-          <div class="hint">直近の「棚卸」系履歴から差分大きい順に表示。</div>
-        </div>
+  <!-- 退避：棚卸差分レポート -->
+  <details style="margin-top:12px;">
+    <summary>棚卸差分レポート（TOP10）</summary>
+    <div class="card" style="margin-top:10px;">
+      <div class="row actions" style="margin-bottom:10px;">
+        <button class="btn-ghost" onclick="downloadStocktakeReportCSV()">レポートCSVをDL</button>
+        <button class="btn-ghost" onclick="clearStocktakeReport()">レポートをクリア</button>
       </div>
 
-      <div class="hr"></div>
-
-      <div class="card" style="box-shadow:none;">
-        <h2>履歴（フィルタ）</h2>
-
-        <div class="row">
-          <div class="field wide">
-            <label>検索（SKU / 商品名 / type / user）</label>
-            <input id="histQ" placeholder="例: 出庫 / CSV / 田中 / 1234" oninput="renderHistory()">
-          </div>
-          <div class="field small">
-            <label>件数</label>
-            <select id="histLimit" onchange="renderHistory()">
-              <option>100</option>
-              <option>300</option>
-              <option>800</option>
-              <option>2000</option>
-            </select>
-          </div>
-          <button class="btn ghost" onclick="downloadHistoryCsv()">history_*.csv をDL</button>
-        </div>
-
-        <div class="tableWrap" style="margin-top:10px;">
-          <table style="min-width:980px;">
-            <thead>
-              <tr>
-                <th style="width:160px;">date</th>
-                <th style="width:120px;">user</th>
-                <th style="width:150px;">type</th>
-                <th style="width:140px;">sku</th>
-                <th>name</th>
-                <th style="width:100px;">qty</th>
-              </tr>
-            </thead>
-            <tbody id="histBody"></tbody>
-          </table>
-        </div>
+      <div class="muted" id="stocktakeReportMeta" style="margin-bottom:10px;">
+        まだ棚卸が実行されていません。
       </div>
 
-      <div class="hr"></div>
+      <div class="tableWrap" style="border:1px solid var(--line); border-radius:12px; overflow:hidden;">
+        <table id="stocktakeReportTable" style="min-width:900px;"></table>
+      </div>
+    </div>
+  </details>
 
-      <div class="grid">
-        <div class="card" style="box-shadow:none;">
-          <h2>バックアップ（手動DL）</h2>
-          <div class="row">
-            <button class="btn ghost" onclick="downloadStocksCsv()">stocks_*.csv をDL</button>
-            <button class="btn ghost" onclick="downloadHistoryCsv()">history_*.csv をDL</button>
-          </div>
-          <div class="hint">手動バックアップ。</div>
-        </div>
+  <!-- 退避：履歴フィルタ + 履歴テーブル + 月次出庫集計 -->
+  <details style="margin-top:12px;">
+    <summary>履歴 / 集計（折りたたみ）</summary>
 
-        <div class="card" style="box-shadow:none;">
-          <h2>オートバックアップ（ページが開いている間だけ）</h2>
-          <div class="row">
-            <div class="field small">
-              <label>間隔（分）</label>
-              <input id="autoBackupMin" type="number" step="1" min="1" value="30">
-            </div>
-            <button class="btn primary" onclick="startAutoBackup()">開始</button>
-            <button class="btn ghost" onclick="stopAutoBackup()">停止</button>
-            <span class="tag" id="abTag">停止中</span>
-          </div>
-          <div class="hint">
-            指定分ごとに stocks_YYYYMMDD.csv / history_YYYYMMDD.csv を自動DLします。
-          </div>
-        </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="sectionTitle">
+        <h2>履歴フィルタ</h2>
+        <div class="hint">SKU / 種別 / 期間で絞り込み</div>
       </div>
 
+      <div class="row actions">
+        <div class="field" style="min-width:220px;">
+          <label>SKU（部分一致OK）</label>
+          <input id="historySkuFilter" type="text" placeholder="例: A001" oninput="applyHistoryView()" />
+        </div>
+
+        <div class="field" style="min-width:240px;">
+          <label>種別</label>
+          <select id="historyTypeFilter" onchange="applyHistoryView()">
+            <option value="">すべて</option>
+            <option value="入庫">入庫</option>
+            <option value="出庫">出庫</option>
+            <option value="編集">編集</option>
+            <option value="削除">削除</option>
+            <option value="CSV">CSV</option>
+            <option value="棚卸">棚卸</option>
+            <option value="商品情報編集">商品情報編集</option>
+            <option value="alert_qty一括設定">alert_qty一括設定</option>
+          </select>
+        </div>
+
+        <div class="field" style="max-width:200px;">
+          <label>開始日（JST）</label>
+          <input id="historyFrom" type="date" onchange="applyHistoryView()" />
+        </div>
+
+        <div class="field" style="max-width:200px;">
+          <label>終了日（JST）</label>
+          <input id="historyTo" type="date" onchange="applyHistoryView()" />
+        </div>
+
+        <button class="btn-ghost" onclick="resetHistoryView()">フィルタクリア</button>
+        <span class="pill">件数: <b id="historyCountBadge">0</b></span>
+      </div>
+
+      <div class="muted" style="margin-top:8px;">
+        ※「種別」は部分一致（例：CSV増減/CSV上書き は “CSV” を選ぶとヒット）
+      </div>
+    </div>
+
+    <div class="card tableCard" style="margin-top:12px;">
+      <div class="tableHeader">
+        <h2>入出庫履歴</h2>
+        <div class="hint">東京時間（JST） / 最新が上</div>
+      </div>
+      <div class="tableWrap">
+        <table id="historyTable"></table>
+      </div>
+    </div>
+
+    <div class="card tableCard" style="margin-top:12px;">
+      <div class="tableHeader">
+        <h2>月次出庫集計</h2>
+        <div class="hint">history の「出庫」を集計（JST月）</div>
+      </div>
+      <div class="tableWrap">
+        <table id="monthlyTable"></table>
+      </div>
+    </div>
+  </details>
+
+  <!-- 退避：バックアップ（ページ下） -->
+  <details style="margin-top:12px; margin-bottom:18px;">
+    <summary>バックアップ（折りたたみ）</summary>
+    <div class="card" style="margin-top:10px;">
+      <div class="sectionTitle">
+        <h2>バックアップ</h2>
+        <div class="hint">手動DL / 自動は「このページが開いている間だけ」</div>
+      </div>
+
+      <div class="row actions" style="margin-bottom:10px;">
+        <button class="btn-ghost" onclick="exportStocksCSV()">在庫CSV（詳細）</button>
+        <button class="btn-ghost" onclick="exportSkuQtyCSV()">在庫数CSV（sku,qty）</button>
+        <button class="btn-ghost" onclick="exportHistoryCSV()">履歴CSV</button>
+        <button class="btn-primary" onclick="exportLowStockCSV()">不足CSV（qty &lt; alert）</button>
+      </div>
+
+      <div class="row actions" style="margin-top:10px;">
+        <div class="field" style="max-width:240px;">
+          <label>自動バックアップ間隔（分）</label>
+          <input id="autoBackupMinutes" type="number" placeholder="例：60" value="0" />
+        </div>
+        <button class="btn-ghost" onclick="toggleAutoBackup()">自動バックアップON/OFF</button>
+        <span class="pill">状態: <b id="autoBackupBadge">OFF</b></span>
+      </div>
+
+      <div class="muted" style="margin-top:10px; line-height:1.6;">
+        ※自動バックアップは、指定間隔で <code>stocks_YYYYMMDD.csv</code> と <code>history_YYYYMMDD.csv</code> を自動DLします。<br>
+        ※PC側のダウンロード設定によっては確認ダイアログが出る場合あり。
+      </div>
+
+      <details style="margin-top:12px;">
+        <summary>（おすすめ）本当の自動バックアップ（Supabase側で毎日）</summary>
+        <div class="muted" style="margin-top:10px; line-height:1.7;">
+          これは「ページを開いてなくても動く」やつ。<br>
+          ・Supabase の <b>Edge Function</b> で stocks/history を Storage に書き出す<br>
+          ・Supabase の <b>Scheduled Triggers（cron）</b> で毎日実行
+        </div>
+      </details>
     </div>
   </details>
 
 </div>
 
 <script>
-/* =========================
-  設定（ここだけ変えればOK）
-========================= */
-const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
-const EDIT_PIN = "1234"; // 共有PIN想定
+/* ========= Supabase ========= */
+const SUPABASE_URL = "https://dabhwrkugxxbkvwlcyxi.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYmh3cmt1Z3h4Ymt2d2xjeXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjAwNjksImV4cCI6MjA4Mjg5NjA2OX0.G60_QQy0SOY7w-72Mq-gMoq99kUPj1I6c13G2SxOHeQ";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* =========================
-  グローバル状態
-========================= */
-let DEFAULT_ALERT_QTY = 3;
+/* ✅ 運用PIN（空文字ならPINなし） */
+const EDIT_PIN = "1234";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* 既定アラート閾値（SKU別にalert_qtyで上書き可） */
+const DEFAULT_ALERT_QTY = 3;
 
-const STATE = {
-  canEdit: false,
-  user: "未入力",
-  autoBackupTimer: null,
-  shipAgg: null,      // SKU別出庫集計（先月+2ヶ月前、直近6ヶ月）
-  stocks: [],         // stocks rows
-  history: [],        // history rows
-  stockMap: {},       // sku -> row
+/* キャッシュ */
+window.__stocks_cache__ = [];
+window.__history_cache__ = [];
+window.__stocktake_report__ = { meta: null, rows: [] };
+
+/* auto backup */
+window.__auto_backup_timer__ = null;
+
+/* 出庫集計キャッシュ */
+window.__shipAgg__ = {
+  last2: { months: [], bySku: new Map() },   // 先月 + 2ヶ月前（今月除外）
+  last6: { months: [], bySku: new Map() }    // 直近6ヶ月（今月含む）
 };
 
-const LS_PIN = "inv_pin";
-const LS_USER = "inv_user";
+/* ========= Undo（直前のインポート取り消し） =========
+  - stocks のスナップショット（全件）を localStorage に保存
+  - history は type の末尾に (batch:xxxxx) を付けて、undoでそれを削除
+  - 表示時は batch を隠す（renderで除去）
+*/
+const UNDO_KEY = "inv_last_undo_v1";
 
-/* =========================
-  便利関数
-========================= */
-function toInt(v, fallback=0){
+function makeBatchId(){
+  return "b" + Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+}
+function saveUndo(op){
+  try{
+    localStorage.setItem(UNDO_KEY, JSON.stringify(op));
+  }catch(e){
+    console.warn("saveUndo failed", e);
+  }
+  updateUndoBadge();
+}
+function getUndo(){
+  try{
+    const s = localStorage.getItem(UNDO_KEY);
+    return s ? JSON.parse(s) : null;
+  }catch(e){
+    return null;
+  }
+}
+function clearUndo(){
+  localStorage.removeItem(UNDO_KEY);
+  updateUndoBadge();
+}
+function updateUndoBadge(){
+  const el = document.getElementById("undoBadge");
+  const u = getUndo();
+  if (!el) return;
+  if (!u) el.textContent = "なし";
+  else{
+    const t = (u.label || "直前").slice(0,18);
+    el.textContent = `${t}`;
+  }
+}
+
+async function snapshotStocks(){
+  const s = await supabaseClient.from("stocks").select("*").order("sku");
+  if (s.error) throw s.error;
+  return s.data || [];
+}
+
+function stripBatch(type){
+  return String(type||"").replace(/\s*\(batch:[^)]+\)\s*$/,"");
+}
+
+async function undoLastImport(){
+  if (!checkPin()) return;
+
+  const u = getUndo();
+  if (!u){
+    alert("取り消しできる履歴がありません（直前のCSV操作のみ対応）");
+    return;
+  }
+
+  if (!confirm(`ひとつ前の操作を取り消します。\n\n対象: ${u.label || "（不明）"}\n日時: ${u.at || ""}\n\nほんまにええんか？`)) return;
+  if (!confirm("ほんまに取り消してええんか？")) return;
+
+  setStatus("Undo 実行中…", true);
+
+  try{
+    // 1) history：batch を含む type を削除
+    if (u.batch){
+      const delH = await supabaseClient
+        .from("history")
+        .delete()
+        .ilike("type", `% (batch:${u.batch})%`);
+      // ilike できない環境がある時の保険：成功/失敗は許容（stocks復元が主）
+      if (delH.error) console.warn("undo history delete failed", delH.error);
+    }
+
+    // 2) stocks：スナップショットに復元
+    if (Array.isArray(u.stocksSnapshot)){
+      const before = u.stocksSnapshot;
+
+      const nowR = await supabaseClient.from("stocks").select("*");
+      if (nowR.error) throw nowR.error;
+      const now = nowR.data || [];
+
+      const beforeSkuSet = new Set(before.filter(x=>x.sku).map(x=>String(x.sku)));
+      const beforeNoSkuNameSet = new Set(before.filter(x=>!x.sku).map(x=>String(x.name||"")));
+
+      // 今あるけどスナップショットに無いものは削除（skuありはskuで、sku無しは(name+sku null)で）
+      const toDeleteIds = [];
+      now.forEach(r=>{
+        const sku = r.sku ? String(r.sku) : "";
+        const name = String(r.name||"");
+        if (sku){
+          if (!beforeSkuSet.has(sku)) toDeleteIds.push(r.id);
+        }else{
+          if (!beforeNoSkuNameSet.has(name)) toDeleteIds.push(r.id);
+        }
+      });
+      if (toDeleteIds.length){
+        // 一括delete（id in）
+        const del = await supabaseClient.from("stocks").delete().in("id", toDeleteIds);
+        if (del.error) throw del.error;
+      }
+
+      // upsert（skuあるものはsku onConflict、sku無いものはidでupdate優先）
+      const withSku = before.filter(x=>x.sku).map(x=>({
+        sku: x.sku,
+        name: x.name || "",
+        qty: Number(x.qty||0),
+        alert_qty: (x.alert_qty === undefined ? null : x.alert_qty)
+      }));
+
+      if (withSku.length){
+        const up1 = await supabaseClient
+          .from("stocks")
+          .upsert(withSku, { onConflict: "sku" });
+        if (up1.error) throw up1.error;
+      }
+
+      // sku無しは「idが残ってる」前提で update（無い場合はinsert）
+      const noSku = before.filter(x=>!x.sku);
+      for (const x of noSku){
+        const payload = {
+          name: x.name || "",
+          qty: Number(x.qty||0),
+          alert_qty: (x.alert_qty === undefined ? null : x.alert_qty),
+          sku: null
+        };
+        // idで update を試す
+        const upTry = await supabaseClient.from("stocks").update(payload).eq("id", x.id);
+        if (upTry.error){
+          // update失敗なら insert（重複などは許容されないが、sku無し運用が稀なので割り切り）
+          const insTry = await supabaseClient.from("stocks").insert(payload);
+          if (insTry.error) console.warn("undo insert(noSku) failed", insTry.error);
+        }
+      }
+    }
+
+    clearUndo();
+    await loadAll();
+    setStatus("Undo 完了", true);
+    alert("ひとつ前のCSV操作を取り消しました");
+  }catch(e){
+    console.error(e);
+    showErr("Undo 失敗", e);
+  }
+}
+
+/* ========= helpers ========= */
+function setStatus(msg, ok=true) {
+  const el = document.getElementById("status");
+  el.textContent = "状態: " + msg;
+  el.className = ok ? "good" : "bad";
+}
+function showErr(context, err) {
+  console.error(context, err);
+  const detail = err ? (err.message || JSON.stringify(err)) : "unknown";
+  alert(`${context}\n\n${detail}`);
+  setStatus(`${context} → ${detail}`, false);
+}
+function currentUser() {
+  return (document.getElementById("userInput").value || "未入力").trim() || "未入力";
+}
+function getAlertQtyForRow(row){
+  const v = row?.alert_qty;
   const n = Number(v);
-  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+  if (Number.isFinite(n) && n >= 0) return n;
+  return DEFAULT_ALERT_QTY;
 }
-function toNum(v, fallback=0){
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-}
-function nowIso(){ return new Date().toISOString(); }
-function jstDateForMonth(monthYYYYMM){
-  // 指定月の15日12:00 JST をISOに（仕様）
-  const [y,m] = (monthYYYYMM||"").split("-").map(x=>toInt(x,0));
-  if(!y || !m) return null;
-  // JST 12:00 を UTC に変換（JST=UTC+9）
-  const dt = new Date(Date.UTC(y, m-1, 15, 3, 0, 0)); // 12:00 JST -> 03:00 UTC
-  return dt.toISOString();
-}
-function ymKeyFromIso(iso){
-  if(!iso) return "";
-  const d = new Date(iso);
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth()+1).padStart(2,"0");
-  return `${y}-${m}`;
-}
-function getAlertForRow(row){
-  const a = (row && row.alert_qty !== null && row.alert_qty !== undefined) ? Number(row.alert_qty) : null;
-  return Number.isFinite(a) ? a : DEFAULT_ALERT_QTY;
+function shortageForRow(row){
+  const qty = Number(row?.qty || 0);
+  const alertQty = getAlertQtyForRow(row);
+  return Math.max(0, alertQty - qty);
 }
 function isLowForRow(row){
-  // 不足判定は固定：qty < alert
-  const qty = toInt(row.qty,0);
-  const alert = toInt(getAlertForRow(row), DEFAULT_ALERT_QTY);
-  return qty < alert;
+  // 不足判定（表示モード & 不足CSV）は qty < alert
+  return Number(row?.qty || 0) < getAlertQtyForRow(row);
 }
-function shouldHighlightRow(row){
-  const mode = document.getElementById("highlightMode").value; // le / lt
-  const qty = toInt(row.qty,0);
-  const alert = toInt(getAlertForRow(row), DEFAULT_ALERT_QTY);
-  return (mode === "lt") ? (qty < alert) : (qty <= alert);
+function normalizeAlertInput(raw){
+  const s = String(raw ?? "").trim();
+  if (s === "") return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0) return { error: "アラート閾値は0以上の数字で入力してください（空欄＝既定）" };
+  return n;
 }
-
-function saveLocalState(){
-  localStorage.setItem(LS_USER, STATE.user || "未入力");
-}
-function loadLocalState(){
-  const u = (localStorage.getItem(LS_USER) || "").trim();
-  STATE.user = u || "未入力";
-  document.getElementById("userName").value = STATE.user;
-
-  const p = localStorage.getItem(LS_PIN);
-  STATE.canEdit = (p && p === EDIT_PIN);
-  document.getElementById("pinTag").textContent = STATE.canEdit ? "編集: ON" : "編集: OFF";
+function getHighlightMode(){
+  return document.getElementById("highlightMode").value; // le or lt
 }
 
-function applyPin(){
-  const p = (document.getElementById("pin").value || "").trim();
-  if(!p){
-    alert("PINを入力してください");
-    return;
+/* JSTの YYYY-MM */
+function ymJST(iso){
+  try{
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(0,7);
+    const parts = new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit"
+    }).formatToParts(d);
+    const get = (t)=>parts.find(p=>p.type===t)?.value||"";
+    return `${get("year")}-${get("month")}`;
+  }catch(e){
+    return String(iso).slice(0,7);
   }
-  if(p !== EDIT_PIN){
-    alert("PINが違います");
-    return;
+}
+
+/* 今月含めて Nヶ月分（新しい→古い） */
+function monthBackList(n){
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-11
+  const out = [];
+  for (let i=0;i<n;i++){
+    const d = new Date(y, m - i, 1);
+    out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
   }
-  localStorage.setItem(LS_PIN, p);
-  document.getElementById("pin").value = "";
-  loadLocalState();
-  alert("PINを適用しました");
+  return out;
 }
-function forgetPin(){
-  localStorage.removeItem(LS_PIN);
-  loadLocalState();
-  alert("PINを忘れました");
+
+/* 出庫集計（last2=先月+2ヶ月前、last6=今月含む6ヶ月） */
+function rebuildShipAgg(){
+  const history = window.__history_cache__ || [];
+
+  const months3 = monthBackList(3);          // [今月, 先月, 2ヶ月前]
+  const months2 = months3.slice(1,3);        // [先月, 2ヶ月前]
+  const months6 = monthBackList(6);          // [今月..]
+
+  const bySku2 = new Map(); // sku -> { [ym]: count }
+  const bySku6 = new Map();
+
+  const isShip = (t) => stripBatch(String(t||"")).includes("出庫");
+
+  history.forEach(h => {
+    if (!isShip(h.type)) return;
+    const sku = String(h.sku || "").trim();
+    if (!sku) return;
+
+    const ym = ymJST(h.date);
+    const qty = Number(h.qty || 0) || 0;
+
+    if (months2.includes(ym)){
+      if (!bySku2.has(sku)) bySku2.set(sku, {});
+      bySku2.get(sku)[ym] = (bySku2.get(sku)[ym] || 0) + qty;
+    }
+    if (months6.includes(ym)){
+      if (!bySku6.has(sku)) bySku6.set(sku, {});
+      bySku6.get(sku)[ym] = (bySku6.get(sku)[ym] || 0) + qty;
+    }
+  });
+
+  window.__shipAgg__ = {
+    last2: { months: months2, bySku: bySku2 },
+    last6: { months: months6, bySku: bySku6 }
+  };
 }
-function needEdit(){
-  if(!STATE.canEdit){
-    alert("編集PINが必要です");
+
+/* ========= PIN 記憶 ========= */
+function loadSavedPin() {
+  const saved = localStorage.getItem("inv_pin") || "";
+  document.getElementById("pinInput").value = saved;
+}
+function savePinOnChange() {
+  const el = document.getElementById("pinInput");
+  el.addEventListener("input", () => localStorage.setItem("inv_pin", el.value));
+}
+function clearSavedPin(){
+  localStorage.removeItem("inv_pin");
+  document.getElementById("pinInput").value = "";
+  setStatus("PINをクリアしました（閲覧のみ）", true);
+}
+function checkPin() {
+  if (!EDIT_PIN) return true;
+  const entered = (document.getElementById("pinInput").value || "").trim();
+  if (entered !== EDIT_PIN) {
+    alert("PINが違います（操作できません）");
     return false;
   }
   return true;
 }
 
-function setConn(ok){
-  const tag = document.getElementById("connTag");
-  if(ok){
-    tag.textContent = "接続: OK";
-    tag.className = "tag good";
-  }else{
-    tag.textContent = "接続: NG";
-    tag.className = "tag bad";
-  }
-}
+/* ========= Load ========= */
+window.onload = async () => {
+  document.getElementById("alertBadge").textContent = String(DEFAULT_ALERT_QTY);
+  document.getElementById("alertLabel").textContent = String(DEFAULT_ALERT_QTY);
 
-/* =========================
-  CSV
-========================= */
-function parseCSV(text){
-  // 簡易CSV（クォート対応）
-  const rows = [];
-  let i=0, field="", row=[], inQ=false;
+  loadSavedPin();
+  savePinOnChange();
+  updateUndoBadge();
 
-  function pushField(){
-    row.push(field);
-    field="";
-  }
-  function pushRow(){
-    // 末尾空行は捨てる
-    if(row.length===1 && row[0].trim()===""){ row=[]; return; }
-    rows.push(row);
-    row=[];
-  }
-
-  while(i < text.length){
-    const c = text[i];
-
-    if(inQ){
-      if(c === '"'){
-        // "" -> "
-        if(text[i+1] === '"'){ field += '"'; i+=2; continue; }
-        inQ = false; i++; continue;
-      }else{
-        field += c; i++; continue;
-      }
-    }else{
-      if(c === '"'){ inQ=true; i++; continue; }
-      if(c === ','){ pushField(); i++; continue; }
-      if(c === '\n'){
-        pushField(); pushRow(); i++; continue;
-      }
-      if(c === '\r'){ i++; continue; }
-      field += c; i++; continue;
-    }
-  }
-  pushField(); pushRow();
-  return rows;
-}
-function normalizeHeaderRow(r){
-  return r.map(x => (x||"").trim().toLowerCase());
-}
-function hasHeader(r){
-  const h = normalizeHeaderRow(r);
-  return h.includes("sku") || h.includes("name") || h.includes("qty") || h.includes("delta") || h.includes("alert_qty") || h.includes("alert");
-}
-function downloadText(filename, text){
-  const blob = new Blob([text], {type:"text/csv;charset=utf-8"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-function csvLine(arr){
-  return arr.map(v=>{
-    const s = String(v ?? "");
-    if(/[",\n\r]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
-    return s;
-  }).join(",");
-}
-function todayYMD(){
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,"0");
-  const dd = String(d.getDate()).padStart(2,"0");
-  return `${y}${m}${dd}`;
-}
-
-/* =========================
-  Undo（事故防止 confirm2回つき）
-========================= */
-function makeUUID(){
-  return (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random();
-}
-function undoKey(kind){ return `undo_last_${kind}`; } // kind: stock_import / inventory_import / ship_import
-function saveUndo(kind, batch){ localStorage.setItem(undoKey(kind), JSON.stringify(batch)); }
-function loadUndo(kind){
-  const s = localStorage.getItem(undoKey(kind));
-  if(!s) return null;
-  try{ return JSON.parse(s); }catch{ return null; }
-}
-function clearUndo(kind){ localStorage.removeItem(undoKey(kind)); }
-
-function snapshotRow(row){
-  if(!row) return { existed:false, qty:null, name:null, alert_qty:null };
-  return {
-    existed:true,
-    qty: row.qty ?? 0,
-    name: row.name ?? "",
-    alert_qty: (row.alert_qty === undefined ? null : row.alert_qty),
-  };
-}
-function recordBefore(batch, sku, beforeRow){
-  if(!sku) return;
-  if(!batch.before) batch.before = {};
-  if(batch.before[sku]) return;
-  batch.before[sku] = beforeRow;
-}
-
-async function undoLast(kind){
-  const batch = loadUndo(kind);
-  if(!batch){
-    alert("取り消せる履歴がありません");
-    return;
-  }
-
-  // confirm2回（事故防止）
-  if(!confirm("ほんまにええんか？")) return;
-  if(!confirm("ほんまに取り消ししてええんか？")) return;
-
-  // history に batch_id が無いとUndoできない
-  // まず batch_id で削除を試す
-  const del = await supabase.from("history").delete().eq("batch_id", batch.id);
-  if(del.error){
-    alert("Undoに必要な設定が不足している可能性があります（history.batch_id）。\n" + del.error.message);
-    return;
-  }
-
-  if(kind === "ship_import"){
-    clearUndo(kind);
-    await loadAll();
-    alert("直前の出庫数CSVアップロードを取り消しました");
-    return;
-  }
-
-  // stocks を復元
-  const beforeMap = batch.before || {};
-  const skus = Object.keys(beforeMap);
-
-  for(const sku of skus){
-    const b = beforeMap[sku];
-    if(!b.existed){
-      await supabase.from("stocks").delete().eq("sku", sku);
-      continue;
-    }
-    const payload = {
-      sku,
-      qty: toInt(b.qty,0),
-      name: (b.name ?? ""),
-      alert_qty: (b.alert_qty === undefined ? null : b.alert_qty),
-    };
-    const up = await supabase.from("stocks").upsert([payload], { onConflict: "sku" });
-    if(up.error){
-      alert(`在庫復元に失敗(${sku}): ` + up.error.message);
-      return;
-    }
-  }
-
-  clearUndo(kind);
+  setStatus("読み込み中…");
   await loadAll();
-  alert("直前のインポートを取り消しました");
-}
+};
 
-/* =========================
-  Supabase 読み込み
-========================= */
-async function loadAll(){
-  loadLocalState();
-  DEFAULT_ALERT_QTY = toInt(document.getElementById("defaultAlert").value, 3);
+async function loadAll() {
+  setStatus("読み込み中…");
 
-  const st = await supabase.from("stocks").select("*").order("sku", {ascending:true});
-  const hi = await supabase.from("history").select("*").order("date", {ascending:false}).limit(5000);
+  const s = await supabaseClient.from("stocks").select("*").order("sku");
+  if (s.error) return showErr("stocks 読み込み失敗", s.error);
 
-  if(st.error || hi.error){
-    setConn(false);
-    console.error(st.error, hi.error);
-    alert("読み込み失敗: " + (st.error?.message || hi.error?.message || ""));
-    return;
-  }
-  setConn(true);
+  const h = await supabaseClient.from("history").select("*").order("date", { ascending: false });
+  if (h.error) return showErr("history 読み込み失敗", h.error);
 
-  STATE.stocks = st.data || [];
-  STATE.history = hi.data || [];
-  STATE.stockMap = {};
-  for(const r of STATE.stocks){
-    if(r.sku) STATE.stockMap[String(r.sku)] = r;
-  }
+  window.__stocks_cache__ = (s.data || []);
+  window.__history_cache__ = (h.data || []);
 
   rebuildShipAgg();
-  renderStocks();
-  renderHistory();
-  renderShipTrend();
-  renderInvDiffTop10();
+
+  applyStockView();    // 1)検索 + 2)不足表示
+  applyHistoryView();  // 4)履歴フィルタ
+
+  renderMonthly(window.__history_cache__);
+  renderStocktakeReport();
+  renderSkuShipLast6(); // SKU別6ヶ月
+
+  updateUndoBadge();
+  setStatus("準備OK", true);
 }
 
-/* =========================
-  出庫集計（typeに「出庫」を含む）
-========================= */
-function monthKeyUTC(y,m){ return `${y}-${String(m).padStart(2,"0")}`; }
-function getLastNMonths(n){
-  // UTC基準で月キー生成
-  const d = new Date();
-  const y0 = d.getUTCFullYear();
-  const m0 = d.getUTCMonth()+1;
-  const out = [];
-  let y=y0, m=m0;
-  for(let i=0;i<n;i++){
-    out.push(monthKeyUTC(y,m));
-    m--;
-    if(m<=0){ m=12; y--; }
-  }
-  return out; // [今月, 先月, ...]
+/* ========= 1) 検索 / 2) 表示モード ========= */
+function resetStockView(){
+  document.getElementById("stockSearch").value = "";
+  document.getElementById("stockViewMode").value = "all";
+  document.getElementById("highlightMode").value = "le";
+  applyStockView();
 }
 
-function rebuildShipAgg(){
-  const last6 = getLastNMonths(6); // 今月含む
-  const last2 = last6.slice(1,3);  // 先月, 2ヶ月前
+function applyStockView(){
+  const q = (document.getElementById("stockSearch").value || "").trim().toLowerCase();
+  const mode = document.getElementById("stockViewMode").value; // all / low
 
-  const bySkuMonth = {}; // sku -> { "YYYY-MM": sum }
-  const bySkuLast2 = {}; // sku -> {last1, last2}
+  let list = [...window.__stocks_cache__];
 
-  for(const h of STATE.history){
-    const type = String(h.type||"");
-    if(!type.includes("出庫")) continue;
-
-    const sku = (h.sku ?? "").toString();
-    if(!sku) continue;
-    const ym = ymKeyFromIso(h.date);
-    if(!ym) continue;
-
-    if(!bySkuMonth[sku]) bySkuMonth[sku] = {};
-    const qty = toInt(h.qty,0);
-    bySkuMonth[sku][ym] = (bySkuMonth[sku][ym] || 0) + qty;
-  }
-
-  for(const sku of Object.keys(bySkuMonth)){
-    const m = bySkuMonth[sku];
-    const last1 = m[last2[0]] || 0; // 先月
-    const last2v = m[last2[1]] || 0; // 2ヶ月前
-    bySkuLast2[sku] = { last1, last2: last2v };
-  }
-
-  STATE.shipAgg = {
-    months6: last6,
-    bySkuMonth,
-    bySkuLast2
-  };
-}
-
-/* =========================
-  描画（在庫）
-========================= */
-function renderStocks(){
-  DEFAULT_ALERT_QTY = toInt(document.getElementById("defaultAlert").value, 3);
-
-  const q = (document.getElementById("q").value || "").trim().toLowerCase();
-  const viewMode = document.getElementById("viewMode").value;
-
-  let rows = STATE.stocks.slice();
-
-  if(q){
-    rows = rows.filter(r => {
+  if (q){
+    list = list.filter(r => {
       const sku = String(r.sku || "").toLowerCase();
       const name = String(r.name || "").toLowerCase();
       return sku.includes(q) || name.includes(q);
     });
   }
-  if(viewMode === "low"){
-    rows = rows.filter(r => isLowForRow(r));
+
+  if (mode === "low"){
+    list = list.filter(r => isLowForRow(r)); // qty < alert
+    document.getElementById("viewBadge").textContent = "不足のみ";
+  } else {
+    document.getElementById("viewBadge").textContent = "全件";
   }
 
-  // KPI
-  const total = STATE.stocks.length;
-  const low = STATE.stocks.filter(r => isLowForRow(r)).length;
-  const qtySum = STATE.stocks.reduce((a,r)=>a+toInt(r.qty,0),0);
-  document.getElementById("kpiTotal").textContent = total;
-  document.getElementById("kpiLow").textContent = low;
-  document.getElementById("kpiQty").textContent = qtySum;
+  renderStocks(list, window.__shipAgg__.last2);
+}
 
-  const tb = document.getElementById("stockBody");
-  tb.innerHTML = "";
+/* ========= render stocks ========= */
+function renderStocks(stocks, last2Agg) {
+  const table = document.getElementById("stockTable");
 
-  for(const r of rows){
-    const sku = String(r.sku || "");
-    const name = String(r.name || "");
-    const qty = toInt(r.qty,0);
-    const alert = toInt(getAlertForRow(r), DEFAULT_ALERT_QTY);
-    const diff = qty - alert;
+  table.innerHTML = `
+    <tr>
+      <th style="width:170px;">SKU</th>
+      <th style="min-width:340px;">商品</th>
+      <th style="width:260px; text-align:right;">数量（先月/2ヶ月前 出庫）</th>
+      <th style="width:120px; text-align:right;">アラート</th>
+      <th style="width:80px; text-align:right;">差</th>
+      <th style="width:560px;">操作</th>
+    </tr>`;
 
-    const tr = document.createElement("tr");
-    if(shouldHighlightRow(r)){
-      tr.style.background = "rgba(220,38,38,.06)";
-    }
+  if (!stocks.length){
+    const tr = table.insertRow();
+    tr.innerHTML = `<td colspan="6" class="center muted">該当する在庫がありません</td>`;
+    return;
+  }
 
-    // 出庫バッジ（先月/2ヶ月前）
-    const ship = STATE.shipAgg?.bySkuLast2?.[sku] || {last1:0,last2:0};
-    const badges = `<span class="badge">先月:${ship.last1}</span><span class="badge">2ヶ月前:${ship.last2}</span>`;
+  const hl = getHighlightMode(); // le/lt
+  const months = (last2Agg?.months || monthBackList(3).slice(1,3)); // [先月, 2ヶ月前]
+  const bySku = last2Agg?.bySku || new Map();
+
+  stocks.forEach(s => {
+    const qty = Number(s.qty || 0);
+    const alertQty = getAlertQtyForRow(s);
+    const shortage = shortageForRow(s);
+
+    const tr = table.insertRow();
+    const shouldHighlight = (hl === "le") ? (qty <= alertQty) : (qty < alertQty);
+    if (shouldHighlight) tr.classList.add("low-stock");
+
+    const alertLabel = (s.alert_qty === null || s.alert_qty === undefined || s.alert_qty === "")
+      ? `既定(${DEFAULT_ALERT_QTY})`
+      : String(alertQty);
+
+    const skuKey = String(s.sku || "").trim();
+    const mMap = bySku.get(skuKey) || {};
+
+    const badges = months.map(ym => {
+      const mm = ym.slice(5,7);
+      const v = Number(mMap[ym] || 0);
+      return `<span class="mBadge">${escapeHtml(mm)}月:<b>${v}</b></span>`;
+    }).join("");
 
     tr.innerHTML = `
-      <td><div class="mono" style="font-weight:900">${escapeHtml(sku)}</div></td>
-      <td class="nameCell">${escapeHtml(name)}</td>
-      <td><b>${qty}</b> ${badges}</td>
-      <td>${alert}</td>
-      <td>${diff}</td>
-      <td>${renderRowActions(r)}</td>
+      <td class="muted">${escapeHtml(s.sku || "")}</td>
+      <td class="nameCell">${escapeHtml(s.name || "")}</td>
+      <td class="qty">
+        <div class="qtyInline">
+          <span class="qtyNum">${qty}</span>
+          <span class="badgeGroup">${badges}</span>
+        </div>
+      </td>
+      <td class="qty">${escapeHtml(alertLabel)}</td>
+      <td class="qty">${shortage}</td>
+      <td class="opsCell">
+        <div class="opLine">
+          <button class="btn-ghost btn-tiny" onclick="restockItemQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">数量入庫</button>
+          <button class="btn-primary btn-tiny" onclick="shipItemQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">数量出庫</button>
+          <button class="btn-ghost btn-tiny" onclick="shipItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">出庫(-1)</button>
+          <button class="btn-ghost btn-tiny" onclick="editItemInfo('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">SKU/商品名/アラート編集</button>
+          <button class="btn-ghost btn-tiny" onclick="editQty('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}', ${qty})">在庫編集</button>
+          <button class="btn-danger btn-tiny" onclick="deleteItem('${escapeJs(s.sku||"")}', '${escapeJs(s.name||"")}')">削除</button>
+        </div>
+      </td>
     `;
-    tb.appendChild(tr);
-  }
+  });
 }
 
-function renderRowActions(r){
-  const sku = String(r.sku || "");
-  const name = String(r.name || "");
-  const alert = (r.alert_qty === null || r.alert_qty === undefined) ? "" : String(r.alert_qty);
+/* ========= SKU別6ヶ月テーブル ========= */
+function renderSkuShipLast6(){
+  const table = document.getElementById("skuShip6Table");
+  if (!table) return;
 
-  return `
-    <div class="row" style="gap:8px">
-      <button class="btn ghost" onclick="quickOutOne('${escapeAttr(sku)}')">出庫(-1)</button>
+  const months = window.__shipAgg__?.last6?.months || monthBackList(6);
+  const bySku = window.__shipAgg__?.last6?.bySku || new Map();
+  const stocks = window.__stocks_cache__ || [];
 
-      <button class="btn ghost" onclick="openEdit('${escapeAttr(sku)}')">編集</button>
+  const headers = months.map(ym => `<th style="width:110px; text-align:right;">${escapeHtml(ym)}</th>`).join("");
 
-      <button class="btn danger" onclick="deleteSku('${escapeAttr(sku)}')">削除</button>
-    </div>
-    <div id="edit_${escapeAttr(sku)}" style="display:none; margin-top:8px;">
-      <div class="row" style="gap:8px;">
-        <div class="field small">
-          <label>SKU</label>
-          <input id="eSku_${escapeAttr(sku)}" value="${escapeAttr(sku)}" />
-        </div>
-        <div class="field wide">
-          <label>商品名</label>
-          <input id="eName_${escapeAttr(sku)}" value="${escapeAttr(name)}" />
-        </div>
-        <div class="field small">
-          <label>アラート（空ならnull扱い）</label>
-          <input id="eAlert_${escapeAttr(sku)}" value="${escapeAttr(alert)}" placeholder="空なら既定扱い" />
-        </div>
-        <button class="btn primary" onclick="saveEdit('${escapeAttr(sku)}')">保存</button>
-        <button class="btn ghost" onclick="closeEdit('${escapeAttr(sku)}')">閉じる</button>
-      </div>
-    </div>
+  table.innerHTML = `
+    <tr>
+      <th style="width:170px;">SKU</th>
+      <th style="min-width:340px;">商品</th>
+      ${headers}
+      <th style="width:120px; text-align:right;">合計</th>
+    </tr>
   `;
-}
 
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
-}
-function escapeAttr(s){
-  return String(s).replace(/"/g,"&quot;");
-}
-
-function openEdit(sku){
-  const el = document.getElementById("edit_"+sku);
-  if(el) el.style.display = "block";
-}
-function closeEdit(sku){
-  const el = document.getElementById("edit_"+sku);
-  if(el) el.style.display = "none";
-}
-
-async function saveEdit(oldSku){
-  if(!needEdit()) return;
-
-  const newSku = (document.getElementById("eSku_"+oldSku).value || "").trim();
-  const name = (document.getElementById("eName_"+oldSku).value || "").trim();
-  const alertStr = (document.getElementById("eAlert_"+oldSku).value || "").trim();
-  const alert_qty = alertStr === "" ? null : toInt(alertStr, null);
-
-  if(!newSku){
-    alert("SKUは必須です");
+  if (!stocks.length){
+    const tr = table.insertRow();
+    tr.innerHTML = `<td colspan="${months.length + 3}" class="center muted">在庫がありません</td>`;
     return;
   }
 
-  // SKU変更時は重複チェック
-  if(newSku !== oldSku && STATE.stockMap[newSku]){
-    alert("SKUが重複しています");
+  stocks.forEach(s => {
+    const sku = String(s.sku||"").trim();
+    const m = bySku.get(sku) || {};
+    let sum = 0;
+    const cells = months.map(ym => {
+      const v = Number(m[ym] || 0);
+      sum += v;
+      return `<td class="qty">${v}</td>`;
+    }).join("");
+    const tr = table.insertRow();
+    tr.innerHTML = `
+      <td class="muted">${escapeHtml(sku)}</td>
+      <td class="nameCell">${escapeHtml(s.name || "")}</td>
+      ${cells}
+      <td class="qty">${sum}</td>
+    `;
+  });
+}
+
+/* ========= render history ========= */
+function renderHistory(history) {
+  const table = document.getElementById("historyTable");
+  table.innerHTML = `
+    <tr>
+      <th style="width:190px;">日時（JST）</th>
+      <th style="width:120px;">ユーザー</th>
+      <th style="width:220px;">種別</th>
+      <th style="width:160px;">SKU</th>
+      <th>商品</th>
+      <th style="width:110px; text-align:right;">数量</th>
+    </tr>`;
+
+  if (!history.length){
+    const tr = table.insertRow();
+    tr.innerHTML = `<td colspan="6" class="center muted">該当する履歴がありません</td>`;
     return;
   }
 
-  const oldRow = STATE.stockMap[oldSku];
-  if(!oldRow){
-    alert("対象SKUが見つかりません");
+  history.forEach(h => {
+    const tr = table.insertRow();
+    tr.innerHTML = `
+      <td class="muted">${escapeHtml(formatDate(h.date))}</td>
+      <td>${escapeHtml(h.user)}</td>
+      <td>${escapeHtml(stripBatch(h.type))}</td>
+      <td class="muted">${escapeHtml(h.sku || "")}</td>
+      <td class="nameCell">${escapeHtml(h.name || "")}</td>
+      <td class="qty">${escapeHtml(String(h.qty))}</td>
+    `;
+  });
+}
+
+/* ========= 月次出庫 ========= */
+function renderMonthly(history) {
+  const table = document.getElementById("monthlyTable");
+  const map = {};
+  history
+    .filter(h => stripBatch(String(h.type||"")).includes("出庫"))
+    .forEach(h => {
+      const ym = ymJST(h.date);
+      map[ym] = (map[ym] || 0) + Number(h.qty || 0);
+    });
+
+  table.innerHTML = `
+    <tr>
+      <th style="width:160px;">月</th>
+      <th style="width:140px; text-align:right;">出庫数</th>
+    </tr>`;
+
+  const keys = Object.keys(map).sort();
+  if (!keys.length) {
+    table.insertRow().innerHTML = `<td colspan="2" class="center muted">まだ出庫履歴がありません</td>`;
+    return;
+  }
+  keys.forEach(ym => {
+    const tr = table.insertRow();
+    tr.innerHTML = `<td>${escapeHtml(ym)}</td><td class="qty">${map[ym]}</td>`;
+  });
+}
+
+/* ========= 4) 履歴フィルタ ========= */
+function resetHistoryView(){
+  document.getElementById("historySkuFilter").value = "";
+  document.getElementById("historyTypeFilter").value = "";
+  document.getElementById("historyFrom").value = "";
+  document.getElementById("historyTo").value = "";
+  applyHistoryView();
+}
+
+function applyHistoryView(){
+  const skuQ = (document.getElementById("historySkuFilter").value || "").trim().toLowerCase();
+  const typeQ = (document.getElementById("historyTypeFilter").value || "").trim(); // 部分一致
+  const from = document.getElementById("historyFrom").value; // YYYY-MM-DD
+  const to = document.getElementById("historyTo").value;     // YYYY-MM-DD
+
+  let list = [...window.__history_cache__];
+
+  if (skuQ){
+    list = list.filter(r => String(r.sku || "").toLowerCase().includes(skuQ));
+  }
+  if (typeQ){
+    list = list.filter(r => stripBatch(String(r.type || "")).includes(typeQ));
+  }
+  if (from){
+    const fromTs = new Date(from + "T00:00:00+09:00").getTime();
+    list = list.filter(r => new Date(r.date).getTime() >= fromTs);
+  }
+  if (to){
+    const toTs = new Date(to + "T23:59:59+09:00").getTime();
+    list = list.filter(r => new Date(r.date).getTime() <= toTs);
+  }
+
+  document.getElementById("historyCountBadge").textContent = String(list.length);
+  renderHistory(list);
+}
+
+/* ========= 5) auto backup (page-open only) ========= */
+function toggleAutoBackup(){
+  const badge = document.getElementById("autoBackupBadge");
+
+  if (window.__auto_backup_timer__){
+    clearInterval(window.__auto_backup_timer__);
+    window.__auto_backup_timer__ = null;
+    badge.textContent = "OFF";
+    setStatus("自動バックアップを停止しました", true);
     return;
   }
 
-  // 更新（SKU変更含む）
-  if(newSku === oldSku){
-    const up = await supabase.from("stocks").update({ name, alert_qty }).eq("sku", oldSku);
-    if(up.error){ alert(up.error.message); return; }
-  }else{
-    // 旧を削除→新をupsert（qty引き継ぎ）
-    const qty = toInt(oldRow.qty,0);
-    const del = await supabase.from("stocks").delete().eq("sku", oldSku);
-    if(del.error){ alert(del.error.message); return; }
-
-    const up = await supabase.from("stocks").upsert([{ sku:newSku, name, qty, alert_qty }], { onConflict:"sku" });
-    if(up.error){ alert(up.error.message); return; }
+  const mins = Number(document.getElementById("autoBackupMinutes").value);
+  if (!Number.isFinite(mins) || mins <= 0){
+    alert("自動バックアップ間隔（分）を 1 以上で入力してください（例：60）");
+    return;
   }
 
-  await addHistory({
-    type: "商品情報編集",
-    sku: newSku,
-    name,
+  const ms = mins * 60 * 1000;
+  window.__auto_backup_timer__ = setInterval(async () => {
+    try{
+      await exportStocksCSV(true);
+      await exportHistoryCSV(true);
+      setStatus(`自動バックアップ実行（${mins}分ごと）`, true);
+    }catch(e){
+      console.error(e);
+      setStatus("自動バックアップ中にエラー", false);
+    }
+  }, ms);
+
+  badge.textContent = `ON（${mins}分）`;
+  setStatus(`自動バックアップON（${mins}分ごと）`, true);
+}
+
+/* ========= 一括：alert_qty 未設定を既定値へ ========= */
+async function bulkFillAlertQty(){
+  if (!checkPin()) return;
+
+  const ok = confirm(`alert_qty が未設定のSKUに、既定値(${DEFAULT_ALERT_QTY})を一括設定します。OK？`);
+  if (!ok) return;
+
+  setStatus("一括更新中…", true);
+
+  const r = await supabaseClient
+    .from("stocks")
+    .update({ alert_qty: DEFAULT_ALERT_QTY })
+    .is("alert_qty", null);
+
+  if (r.error) return showErr("alert_qty 一括更新失敗", r.error);
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "alert_qty一括設定",
+    sku: null,
+    name: "",
     qty: 0
   });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+  alert("未設定のalert_qtyを既定値にしました");
+}
+
+/* ========= 照合 ========= */
+async function findStockRow(sku, name) {
+  if (sku) return await supabaseClient.from("stocks").select("*").eq("sku", sku).maybeSingle();
+  return await supabaseClient.from("stocks").select("*").eq("name", name).maybeSingle();
+}
+
+/* ========= 入庫/出庫 ========= */
+async function addItemManual() {
+  if (!checkPin()) return;
+
+  const sku = (document.getElementById("skuInput").value || "").trim();
+  const name = (document.getElementById("nameInput").value || "").trim();
+  const qty = Number(document.getElementById("qtyInput").value);
+  const alertRaw = document.getElementById("alertInput").value;
+
+  if (!sku || !Number.isFinite(qty) || qty <= 0) return alert("SKUと数量（1以上）は必須です");
+
+  const alertVal = normalizeAlertInput(alertRaw);
+  if (alertVal && alertVal.error) return alert(alertVal.error);
+
+  const ex = await findStockRow(sku, name);
+  if (ex.error) return showErr("stocks 既存チェック失敗", ex.error);
+
+  if (ex.data) {
+    const newQty = Number(ex.data.qty || 0) + qty;
+    const payload = { qty: newQty };
+    if (name) payload.name = name;
+    if (alertVal !== null) payload.alert_qty = alertVal;
+    const up = await supabaseClient.from("stocks").update(payload).eq("id", ex.data.id);
+    if (up.error) return showErr("stocks update 失敗", up.error);
+  } else {
+    const payload = { sku, name: name || "", qty };
+    if (alertVal !== null) payload.alert_qty = alertVal;
+    const ins = await supabaseClient.from("stocks").insert(payload);
+    if (ins.error) return showErr("stocks insert 失敗", ins.error);
+  }
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "入庫",
+    sku,
+    name: name || "",
+    qty
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  document.getElementById("skuInput").value = "";
+  document.getElementById("nameInput").value = "";
+  document.getElementById("qtyInput").value = "";
+  document.getElementById("alertInput").value = "";
 
   await loadAll();
 }
 
-async function quickOutOne(sku){
-  await stockOutBySku(sku, 1);
+async function restockItemQty(sku, name){
+  if (!checkPin()) return;
+
+  const ex = await findStockRow(sku, name);
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return;
+
+  const current = Number(ex.data.qty || 0);
+  const input = prompt(
+    `数量入庫（SKU: ${sku} / 商品: ${ex.data.name || ""}）\n現在: ${current}\n入庫数量（1以上）`,
+    "1"
+  );
+  if (input === null) return;
+
+  const n = Number(input);
+  if (!Number.isFinite(n) || n <= 0) return alert("1以上の数字を入力してください");
+
+  const up = await supabaseClient.from("stocks").update({ qty: current + n }).eq("id", ex.data.id);
+  if (up.error) return showErr("stocks update 失敗", up.error);
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "入庫",
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
+    qty: n
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
 }
 
-async function deleteSku(sku){
-  if(!needEdit()) return;
+async function shipItem(sku, name) {
+  if (!checkPin()) return;
 
-  // confirm2回（仕様）
-  if(!confirm("ほんまにええんか？")) return;
-  if(!confirm("ほんまに削除してええんか？")) return;
+  const ex = await findStockRow(sku, name);
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return;
 
-  const row = STATE.stockMap[sku];
-  if(!row){
-    alert("SKUが見つかりません");
-    return;
-  }
+  // ✅ 0以下で削除しない → 0に丸める
+  const newQty = Math.max(0, Number(ex.data.qty || 0) - 1);
 
-  const del = await supabase.from("stocks").delete().eq("sku", sku);
-  if(del.error){ alert(del.error.message); return; }
+  const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
+  if (up.error) return showErr("stocks update 失敗", up.error);
 
-  await addHistory({
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "出庫",
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
+    qty: 1
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+}
+
+async function shipItemQty(sku, name) {
+  if (!checkPin()) return;
+
+  const ex = await findStockRow(sku, name);
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return;
+
+  const current = Number(ex.data.qty || 0);
+  const input = prompt(
+    `数量出庫（SKU: ${sku} / 商品: ${ex.data.name || ""}）\n現在: ${current}\n出庫数量（1以上）`,
+    "1"
+  );
+  if (input === null) return;
+
+  const n = Number(input);
+  if (!Number.isFinite(n) || n <= 0) return alert("1以上の数字を入力してください");
+
+  // ✅ 0以下で削除しない → 0に丸める
+  const newQty = Math.max(0, current - n);
+
+  const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
+  if (up.error) return showErr("stocks update 失敗", up.error);
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "出庫",
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
+    qty: n
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+}
+
+/* ========= SKU/商品名/アラート 編集 ========= */
+async function editItemInfo(oldSku, oldName) {
+  if (!checkPin()) return;
+
+  const ex = await findStockRow(oldSku, oldName);
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return alert("商品が見つかりません");
+
+  const curSku = (ex.data.sku || "").trim();
+  const curName = (ex.data.name || "").trim();
+  const curAlert = (ex.data.alert_qty === null || ex.data.alert_qty === undefined) ? "" : String(ex.data.alert_qty);
+
+  const newSku = prompt(`SKUを編集（必須）\n現在: ${curSku}`, curSku);
+  if (newSku === null) return;
+  if (!newSku.trim()) return alert("SKUは必須です");
+
+  const newName = prompt(`商品名を編集（任意）\n現在: ${curName}`, curName);
+  if (newName === null) return;
+
+  const newAlertRaw = prompt(
+    `アラート閾値を編集（任意）\n空欄＝既定(${DEFAULT_ALERT_QTY})\n現在: ${curAlert === "" ? "（既定）" : curAlert}`,
+    curAlert
+  );
+  if (newAlertRaw === null) return;
+
+  const alertVal = normalizeAlertInput(newAlertRaw);
+  if (alertVal && alertVal.error) return alert(alertVal.error);
+
+  const dup = await supabaseClient.from("stocks").select("id").eq("sku", newSku.trim()).maybeSingle();
+  if (dup.error) return showErr("SKU重複チェック失敗", dup.error);
+  if (dup.data && dup.data.id !== ex.data.id) return alert(`SKU「${newSku.trim()}」は既に存在します。別のSKUにしてください。`);
+
+  const payload = { sku: newSku.trim(), name: (newName || "").trim(), alert_qty: (alertVal === null) ? null : alertVal };
+  const up = await supabaseClient.from("stocks").update(payload).eq("id", ex.data.id);
+  if (up.error) return showErr("stocks update 失敗", up.error);
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type: "商品情報編集",
+    sku: payload.sku,
+    name: payload.name,
+    qty: 0
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+}
+
+/* ========= 在庫編集 ========= */
+async function editQty(sku, name, currentQty) {
+  if (!checkPin()) return;
+
+  const input = prompt(`在庫数を変更（SKU: ${sku} / 商品: ${name||""}）\n現在: ${currentQty}\n新しい数量（0以上）`, String(currentQty));
+  if (input === null) return;
+
+  const newQty = Number(input);
+  if (!Number.isFinite(newQty) || newQty < 0) return alert("0以上の数字を入力してください");
+
+  const ex = await findStockRow(sku, name);
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return alert("商品が見つかりません");
+
+  // ✅ 0でも削除しない → qty=0で保持
+  const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
+  if (up.error) return showErr("stocks update 失敗", up.error);
+
+  const diff = newQty - Number(ex.data.qty);
+  const type = diff >= 0 ? "編集（増）" : "編集（減）";
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
+    type,
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
+    qty: Math.abs(diff)
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+}
+
+/* ========= 削除（確認2回） ========= */
+async function deleteItem(sku, name) {
+  if (!checkPin()) return;
+
+  if (!confirm("ほんまにええんか？")) return;
+  if (!confirm("ほんまに削除してええんか？")) return;
+
+  const ex = await findStockRow(sku, name);
+  if (ex.error) return showErr("stocks 取得失敗", ex.error);
+  if (!ex.data) return;
+
+  const del = await supabaseClient.from("stocks").delete().eq("id", ex.data.id);
+  if (del.error) return showErr("stocks delete 失敗", del.error);
+
+  const hin = await supabaseClient.from("history").insert({
+    date: new Date().toISOString(),
+    user: currentUser(),
     type: "削除",
-    sku,
-    name: row.name || "",
-    qty: toInt(row.qty,0)
+    sku: ex.data.sku || sku,
+    name: ex.data.name || "",
+    qty: 0
+  });
+  if (hin.error) return showErr("history insert 失敗", hin.error);
+
+  await loadAll();
+}
+
+/* ========= 発注アシスト（v10） ========= */
+function exportOrderAssistCSV(){
+  const stocks = window.__stocks_cache__ || [];
+  const factor = Number(document.getElementById("orderFactor").value || 1);
+  const minRaw = (document.getElementById("orderMin").value || "").trim();
+  const minN = minRaw === "" ? null : Number(minRaw);
+
+  if (!Number.isFinite(factor) || factor <= 0) return alert("係数は 0 より大きい数で入力してください");
+  if (minN !== null && (!Number.isFinite(minN) || minN < 0)) return alert("最低発注数は0以上で入力してください（空欄OK）");
+
+  // 基準=alert×係数
+  const rows = stocks.map(r=>{
+    const alertQty = getAlertQtyForRow(r);
+    const threshold = alertQty * factor;
+    const qty = Number(r.qty || 0);
+    const need = threshold - qty; // これが正なら不足
+    return { ...r, _alert: alertQty, _threshold: threshold, _need: need };
+  }).filter(r => r._need > 0); // qty < alert×係数
+
+  let csv = "sku,name,qty,alert_qty,threshold,order_qty\n";
+  rows.forEach(r => {
+    const aq = (r.alert_qty === null || r.alert_qty === undefined) ? "" : String(r.alert_qty);
+    const threshold = Number(r._threshold || 0);
+    let order = Math.ceil(Number(r._need || 0));
+    if (minN !== null) order = Math.max(order, minN);
+    csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty||0)},${csvEscape(aq)},${threshold},${order}\n`;
   });
 
-  await loadAll();
+  downloadText(`order_assist_${todayStr()}.csv`, csv);
+  alert(`発注CSVを出力しました（${rows.length}件）`);
 }
 
-/* =========================
-  手入力 入庫/出庫
-========================= */
-async function stockInManual(){
-  if(!needEdit()) return;
+/* ========= CSV Export ========= */
+function downloadText(filename, text) {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+}
+function csvEscape(v) {
+  const s = String(v ?? "");
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+  return s;
+}
 
-  const sku = (document.getElementById("inSku").value||"").trim();
-  const name = (document.getElementById("inName").value||"").trim();
-  const qty = toInt(document.getElementById("inQty").value, 0);
-  const alertStr = (document.getElementById("inAlert").value||"").trim();
-  const alert_qty = alertStr==="" ? undefined : toInt(alertStr, undefined);
+/* 在庫CSV（詳細） */
+async function exportStocksCSV(silent=false) {
+  const s = await supabaseClient.from("stocks").select("*").order("sku");
+  if (s.error) return showErr("在庫CSV取得失敗", s.error);
 
-  if(!sku){ alert("SKUは必須です"); return; }
-  if(!qty || qty<1){ alert("数量は必須です"); return; }
+  let csv = "sku,name,qty,alert_qty,shortage\n";
+  (s.data || []).forEach(r => {
+    const aq = (r.alert_qty === null || r.alert_qty === undefined) ? "" : String(r.alert_qty);
+    const alertNum = (aq === "") ? DEFAULT_ALERT_QTY : Number(aq);
+    const sh = Math.max(0, alertNum - Number(r.qty || 0));
+    csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty||0)},${csvEscape(aq)},${sh}\n`;
+  });
+  downloadText(`stocks_${todayStr()}.csv`, csv);
+  if (!silent) alert("在庫CSVを出力しました");
+}
 
-  const existed = STATE.stockMap[sku];
-  if(existed){
-    const payload = { qty: toInt(existed.qty,0) + qty };
-    if(name) payload.name = name;
-    if(alertStr !== "") payload.alert_qty = alert_qty;
+/* 在庫数CSV（sku,qty） */
+async function exportSkuQtyCSV(){
+  const s = await supabaseClient.from("stocks").select("sku,qty").order("sku");
+  if (s.error) return showErr("在庫数CSV取得失敗", s.error);
 
-    const up = await supabase.from("stocks").update(payload).eq("sku", sku);
-    if(up.error){ alert(up.error.message); return; }
+  let csv = "sku,qty\n";
+  (s.data || []).forEach(r => {
+    csv += `${csvEscape(r.sku||"")},${Number(r.qty||0)}\n`;
+  });
+  downloadText(`sku_qty_${todayStr()}.csv`, csv);
+  alert("在庫数CSVを出力しました");
+}
 
-  }else{
-    const payload = { sku, name, qty };
-    if(alertStr !== "") payload.alert_qty = alert_qty;
-    const ins = await supabase.from("stocks").insert([payload]);
-    if(ins.error){ alert(ins.error.message); return; }
+/* 不足CSV：qty < alert */
+function exportLowStockCSV(){
+  const stocks = window.__stocks_cache__ || [];
+  const low = stocks
+    .map(r => ({...r, _alert: getAlertQtyForRow(r), _short: shortageForRow(r)}))
+    .filter(r => Number(r.qty || 0) < r._alert);
+
+  let csv = "sku,name,qty,alert_qty,shortage\n";
+  low.forEach(r => {
+    const aq = (r.alert_qty === null || r.alert_qty === undefined) ? "" : String(r.alert_qty);
+    csv += `${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${Number(r.qty || 0)},${csvEscape(aq)},${Number(r._short)}\n`;
+  });
+
+  downloadText(`low_stock_${todayStr()}.csv`, csv);
+  alert(`不足CSVを出力しました（${low.length}件）`);
+}
+
+/* 履歴CSV */
+async function exportHistoryCSV(silent=false) {
+  const h = await supabaseClient.from("history").select("*").order("date", { ascending: false });
+  if (h.error) return showErr("履歴CSV取得失敗", h.error);
+
+  let csv = "date,user,type,sku,name,qty\n";
+  (h.data || []).forEach(r => {
+    csv += `${csvEscape(r.date)},${csvEscape(r.user)},${csvEscape(stripBatch(r.type))},${csvEscape(r.sku||"")},${csvEscape(r.name||"")},${csvEscape(String(r.qty))}\n`;
+  });
+  downloadText(`history_${todayStr()}.csv`, csv);
+  if (!silent) alert("履歴CSVを出力しました");
+}
+
+/* ========= CSV parsing ========= */
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cur = "";
+  let inQ = false;
+
+  for (let i=0; i<text.length; i++) {
+    const ch = text[i], next = text[i+1];
+    if (ch === '"') {
+      if (inQ && next === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+      continue;
+    }
+    if (!inQ && ch === ",") { row.push(cur); cur=""; continue; }
+    if (!inQ && (ch === "\n" || ch === "\r")) {
+      if (ch === "\r" && next === "\n") i++;
+      row.push(cur); rows.push(row);
+      row=[]; cur=""; continue;
+    }
+    cur += ch;
+  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
+/* ========= 在庫CSVインポート（増減/上書き） ========= */
+async function importStocksCSV(inputEl) {
+  if (!checkPin()) { inputEl.value = ""; return; }
+  const file = inputEl.files?.[0];
+  if (!file) return;
+
+  setStatus("CSV読み込み中…", true);
+
+  // ✅ Undo用スナップショット
+  let stocksSnap = null;
+  try{ stocksSnap = await snapshotStocks(); }catch(e){ console.warn("snapshot failed", e); }
+
+  const batch = makeBatchId();
+
+  const text = await file.text();
+  const rows = parseCSV(text).map(r => r.map(c => (c ?? "").trim())).filter(r => r.length >= 2);
+  if (!rows.length) { alert("CSVが空です"); inputEl.value = ""; return; }
+
+  let countProcessed = 0, countUpdated = 0, countInserted = 0, countDeleted = 0, countSkipped = 0;
+  const errors = [];
+  const pushError = (line, msg) => errors.push(`行${line}: ${msg}`);
+
+  const header = rows[0].map(x => x.toLowerCase());
+  const hasHeader = header.includes("name") || header.includes("sku") || header.includes("qty") || header.includes("delta") || header.includes("alert_qty");
+
+  let dataRows = rows;
+  let mode = "set";
+  let idxSku = 0, idxName = 1, idxValue = 2, idxAlert = -1;
+
+  if (hasHeader) {
+    idxSku = header.indexOf("sku");
+    idxName = header.indexOf("name");
+    const iDelta = header.indexOf("delta");
+    const iQty = header.indexOf("qty");
+    idxAlert = header.indexOf("alert_qty");
+    if (iDelta !== -1) { mode="delta"; idxValue = iDelta; }
+    else { mode="set"; idxValue = iQty !== -1 ? iQty : 2; }
+    dataRows = rows.slice(1);
+  } else {
+    mode = "set";
+    if (rows[0].length === 2) { idxSku = -1; idxName = 0; idxValue = 1; idxAlert = -1; }
+    else if (rows[0].length >= 4) { idxSku = 0; idxName = 1; idxValue = 2; idxAlert = 3; }
+    else { idxSku = 0; idxName = 1; idxValue = 2; idxAlert = -1; }
   }
 
-  await addHistory({ type:"入庫", sku, name: name || (existed?.name||""), qty });
-  document.getElementById("inSku").value="";
-  document.getElementById("inName").value="";
-  document.getElementById("inQty").value="";
-  document.getElementById("inAlert").value="";
-  await loadAll();
-}
+  const existing = await supabaseClient.from("stocks").select("*");
+  if (existing.error) return showErr("既存在庫取得失敗", existing.error);
 
-async function stockOutManual(fixedOne){
-  if(!needEdit()) return;
+  const bySku = new Map((existing.data||[]).filter(x=>x.sku).map(x => [x.sku, x]));
+  const byName = new Map((existing.data||[]).map(x => [x.name, x]));
 
-  const sku = (document.getElementById("outSku").value||"").trim();
-  if(!sku){ alert("SKUを入れてください"); return; }
+  setStatus("CSV取り込み中…", true);
 
-  let qty = fixedOne ? 1 : toInt(document.getElementById("outQty").value, 0);
-  if(!qty || qty<1){ alert("数量が不正です"); return; }
+  for (let i = 0; i < dataRows.length; i++) {
+    const r = dataRows[i];
+    const lineNo = hasHeader ? (i + 2) : (i + 1);
 
-  await stockOutBySku(sku, qty);
+    try{
+      const sku = idxSku >= 0 ? (r[idxSku] || "").trim() : "";
+      const name = (r[idxName] || "").trim();
+      const valRaw = (r[idxValue] || "").trim();
+      const alertRaw = (idxAlert >= 0) ? (r[idxAlert] || "").trim() : "";
 
-  document.getElementById("outSku").value="";
-  document.getElementById("outQty").value="1";
-}
+      if (!name && !sku) { countSkipped++; continue; }
 
-async function stockOutBySku(sku, qty){
-  if(!needEdit()) return;
+      const num = Number(valRaw);
+      // ✅ 0はOK（数値として）
+      if (!Number.isFinite(num)) { countSkipped++; pushError(lineNo, `数量が数値ではありません（"${valRaw}"）`); continue; }
 
-  const row = STATE.stockMap[sku];
-  if(!row){
-    alert("SKUが見つかりません");
-    return;
-  }
-  const cur = toInt(row.qty,0);
-  const next = cur - qty;
+      const alertVal = normalizeAlertInput(alertRaw);
+      if (alertVal && alertVal.error) { countSkipped++; pushError(lineNo, alertVal.error); continue; }
 
-  if(next <= 0){
-    const del = await supabase.from("stocks").delete().eq("sku", sku);
-    if(del.error){ alert(del.error.message); return; }
-  }else{
-    const up = await supabase.from("stocks").update({ qty: next }).eq("sku", sku);
-    if(up.error){ alert(up.error.message); return; }
-  }
+      const found = sku ? bySku.get(sku) : byName.get(name);
 
-  await addHistory({ type:"出庫", sku, name: row.name || "", qty });
-  await loadAll();
-}
+      if (!found) {
+        const startQty = num;
+        if (startQty <= 0) { countSkipped++; continue; } // 新規で0以下は作らない
 
-/* =========================
-  履歴追加
-========================= */
-async function addHistory({type, sku, name, qty, batch_id}){
-  const row = {
-    date: nowIso(),
-    user: STATE.user || "未入力",
-    type: type || "",
-    sku: sku ?? null,
-    name: name ?? "",
-    qty: toInt(qty,0),
-  };
-  if(batch_id) row.batch_id = batch_id; // カラムがあれば入る
-  const ins = await supabase.from("history").insert([row]);
-  if(ins.error){
-    // batch_idが無い等で失敗するケースを吸収
-    if(batch_id){
-      const fallback = { ...row };
-      delete fallback.batch_id;
-      const ins2 = await supabase.from("history").insert([fallback]);
-      if(ins2.error){
-        alert("履歴追加に失敗: " + ins2.error.message);
-        return false;
+        const payload = { sku: sku || null, name: name || "", qty: startQty };
+        if (alertVal !== null && idxAlert >= 0) payload.alert_qty = alertVal;
+
+        const ins = await supabaseClient.from("stocks").insert(payload);
+        if (ins.error) { pushError(lineNo, `insert失敗（${sku||name}）: ${ins.error.message}`); continue; }
+
+        countInserted++; countProcessed++;
+
+        const hin = await supabaseClient.from("history").insert({
+          date: new Date().toISOString(),
+          user: currentUser(),
+          type: `${mode === "delta" ? "CSV増減" : "CSV上書き"} (batch:${batch})`,
+          sku: payload.sku,
+          name: payload.name,
+          qty: Math.abs(startQty)
+        });
+        if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
+        continue;
       }
-      return true;
-    }
-    alert("履歴追加に失敗: " + ins.error.message);
-    return false;
-  }
-  return true;
-}
 
-/* =========================
-  不足CSV
-========================= */
-function downloadLowStockCsv(){
-  const lows = STATE.stocks.filter(r => isLowForRow(r));
-  const lines = [];
-  lines.push(csvLine(["sku","name","qty","alert_qty","shortage"]));
-  for(const r of lows){
-    const sku = r.sku || "";
-    const name = r.name || "";
-    const qty = toInt(r.qty,0);
-    const alert = toInt(getAlertForRow(r), DEFAULT_ALERT_QTY);
-    const shortage = Math.max(0, alert - qty);
-    lines.push(csvLine([sku, name, qty, (r.alert_qty ?? ""), shortage]));
-  }
-  downloadText(`low_stock_${todayYMD()}.csv`, lines.join("\n"));
-}
+      let newQty = (mode === "delta") ? (Number(found.qty) + num) : num;
 
-/* =========================
-  発注アシスト（新仕様）
-  target=ceil(alert*factor)
-  order_qty = max(0, target - qty)
-========================= */
-function downloadOrderAssistCsv(){
-  const factor = toNum(document.getElementById("orderFactor").value, 1);
-  const minOrder = toInt(document.getElementById("minOrderQty").value, 0);
+      if (newQty <= 0) {
+        const del = await supabaseClient.from("stocks").delete().eq("id", found.id);
+        if (del.error) { pushError(lineNo, `delete失敗（${found.sku||found.name}）: ${del.error.message}`); continue; }
+        countDeleted++; countProcessed++;
+        if (found.sku) bySku.delete(found.sku);
+        byName.delete(found.name);
+      } else {
+        const payload = { qty: newQty, sku: sku || found.sku || null, name: name || found.name || "" };
+        if (idxAlert >= 0 && alertVal !== null) payload.alert_qty = alertVal;
 
-  const lines = [];
-  lines.push(csvLine(["sku","name","qty","alert_qty","target","order_qty"]));
+        const up = await supabaseClient.from("stocks").update(payload).eq("id", found.id);
+        if (up.error) { pushError(lineNo, `update失敗（${found.sku||found.name}）: ${up.error.message}`); continue; }
 
-  for(const r of STATE.stocks){
-    const sku = r.sku || "";
-    const name = r.name || "";
-    const qty = toInt(r.qty,0);
-    const alert = toInt(getAlertForRow(r), DEFAULT_ALERT_QTY);
+        countUpdated++; countProcessed++;
 
-    const target = Math.ceil(alert * factor);
-    let orderQty = Math.max(0, target - qty);
-    if(orderQty > 0 && minOrder > 0) orderQty = Math.max(orderQty, minOrder);
+        const updated = { ...found, ...payload };
+        if (found.sku && updated.sku !== found.sku) bySku.delete(found.sku);
+        if (updated.sku) bySku.set(updated.sku, updated);
+        byName.delete(found.name);
+        byName.set(updated.name, updated);
+      }
 
-    if(orderQty > 0){
-      lines.push(csvLine([sku, name, qty, (r.alert_qty ?? ""), target, orderQty]));
+      const hin = await supabaseClient.from("history").insert({
+        date: new Date().toISOString(),
+        user: currentUser(),
+        type: `${mode === "delta" ? "CSV増減" : "CSV上書き"} (batch:${batch})`,
+        sku: (sku || found.sku || null),
+        name: (name || found.name || ""),
+        qty: Math.abs(num)
+      });
+      if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
+
+    }catch(e){
+      countSkipped++;
+      pushError(lineNo, `例外: ${e?.message || String(e)}`);
     }
   }
 
-  downloadText(`order_assist_${todayYMD()}.csv`, lines.join("\n"));
-}
-
-/* =========================
-  alert_qty 未設定を既定に埋める
-========================= */
-async function fillDefaultAlertToNulls(){
-  if(!needEdit()) return;
-
-  const targets = STATE.stocks.filter(r => r.alert_qty === null || r.alert_qty === undefined);
-  if(targets.length === 0){
-    alert("未設定のalert_qtyはありません");
-    return;
+  // ✅ Undo保存
+  if (stocksSnap){
+    saveUndo({
+      batch,
+      label: "在庫CSVインポート",
+      at: new Date().toISOString(),
+      stocksSnapshot: stocksSnap
+    });
+  }else{
+    saveUndo({ batch, label: "在庫CSVインポート", at: new Date().toISOString(), stocksSnapshot: null });
   }
 
-  if(!confirm(`${targets.length}件のalert_qtyを既定(${DEFAULT_ALERT_QTY})で埋めます。よろしいですか？`)) return;
-
-  // 一括update（skuごと）
-  for(const r of targets){
-    const up = await supabase.from("stocks").update({ alert_qty: DEFAULT_ALERT_QTY }).eq("sku", r.sku);
-    if(up.error){ alert(up.error.message); return; }
-    await addHistory({ type:"alert_qty一括設定", sku:r.sku, name:r.name||"", qty:DEFAULT_ALERT_QTY });
-  }
-
+  inputEl.value = "";
   await loadAll();
-  alert("一括設定しました");
+
+  const summary =
+`CSVインポート完了
+処理: ${countProcessed}件（insert:${countInserted} / update:${countUpdated} / delete:${countDeleted}）
+スキップ: ${countSkipped}件
+エラー: ${errors.length}件`;
+
+  if (errors.length) {
+    const head = errors.slice(0, 20).join("\n");
+    alert(summary + "\n\n--- エラー詳細（最大20件表示） ---\n" + head + (errors.length > 20 ? `\n…他 ${errors.length - 20} 件` : ""));
+    setStatus(`CSV完了（エラー ${errors.length}件）`, false);
+  } else {
+    alert(summary);
+    setStatus("CSV完了（エラーなし）", true);
+  }
 }
 
-/* =========================
-  在庫CSVインポート（Undo対応）
-========================= */
-async function importStockCsv(){
-  if(!needEdit()) return;
+/* ========= 出庫CSV（月指定）: チェックONなら在庫を減らす ========= */
+async function importShipCSVWithMonth(inputEl){
+  if (!checkPin()) { inputEl.value = ""; return; }
+  const file = inputEl.files?.[0];
+  if (!file) return;
 
-  const text = (document.getElementById("stockCsvText").value || "").trim();
-  if(!text){ alert("CSVを入力してください"); return; }
+  const ym = (document.getElementById("shipCsvMonth").value || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(ym)) { inputEl.value=""; return alert("月（YYYY-MM）を正しく入力してください（例：2025-11）"); }
 
-  const mode = document.getElementById("stockCsvMode").value; // delta / overwrite
-  const rows = parseCSV(text);
-  if(rows.length === 0){ alert("CSVが空です"); return; }
+  const reduceStock = !!document.getElementById("shipReduceStock")?.checked;
 
-  let start = 0;
-  if(hasHeader(rows[0])) start = 1;
+  setStatus("出庫CSV読み込み中…", true);
 
-  const batch = { id: makeUUID(), kind:"stock_import", createdAt: nowIso(), before:{} };
+  // ✅ Undo用スナップショット（在庫を触る可能性があるので常に取る）
+  let stocksSnap = null;
+  try{ stocksSnap = await snapshotStocks(); }catch(e){ console.warn("snapshot failed", e); }
 
-  let ok=0, skip=0, err=0;
-  const errLines = [];
+  const batch = makeBatchId();
 
-  for(let i=start;i<rows.length;i++){
-    const r = rows[i].map(x => (x ?? "").trim());
-    if(r.length < 2){ skip++; continue; }
+  const text = await file.text();
+  const rows = parseCSV(text).map(r => r.map(c => (c ?? "").trim())).filter(r => r.length >= 2);
+  if (!rows.length) { alert("CSVが空です"); inputEl.value = ""; return; }
 
-    let sku = r[0] || "";
-    let name = r[1] || "";
+  const header = rows[0].map(x => x.toLowerCase());
+  const hasHeader = header.includes("sku") || header.includes("qty") || header.includes("name");
 
-    // sku空なら nameで照合（仕様）
-    let stockRow = sku ? STATE.stockMap[sku] : null;
-    if(!sku && name){
-      stockRow = STATE.stocks.find(x => String(x.name||"") === name) || null;
-      if(stockRow) sku = String(stockRow.sku||"");
+  let dataRows = rows;
+  let idxSku = 0, idxName = -1, idxQty = 1;
+
+  if (hasHeader){
+    idxSku = header.indexOf("sku"); if (idxSku === -1) idxSku = 0;
+    idxName = header.indexOf("name");
+    idxQty = header.indexOf("qty"); if (idxQty === -1) idxQty = 1;
+    dataRows = rows.slice(1);
+  } else {
+    if (rows[0].length >= 3) { idxSku = 0; idxName = 1; idxQty = 2; }
+    else { idxSku = 0; idxName = -1; idxQty = 1; }
+  }
+
+  const errors = [];
+  const pushError = (line, msg) => errors.push(`行${line}: ${msg}`);
+
+  // 指定月の「15日 12:00 JST」をdateにする（月の判定にだけ使う想定）
+  const fakeIso = new Date(`${ym}-15T12:00:00+09:00`).toISOString();
+
+  let inserted = 0, skipped = 0, updatedStocks = 0;
+
+  // stocks を先読み（減らす場合、行ごとのselectを避ける）
+  let stockMap = new Map();
+  if (reduceStock){
+    const s = await supabaseClient.from("stocks").select("*");
+    if (s.error) return showErr("stocks 取得失敗（出庫CSV）", s.error);
+    (s.data||[]).forEach(r=>{
+      if (r.sku) stockMap.set(String(r.sku).trim(), r);
+    });
+  }
+
+  for (let i=0; i<dataRows.length; i++){
+    const r = dataRows[i];
+    const lineNo = hasHeader ? (i + 2) : (i + 1);
+
+    const sku = (r[idxSku] || "").trim();
+    const name = (idxName >= 0 ? (r[idxName] || "").trim() : "");
+    const qtyRaw = (r[idxQty] || "").trim();
+
+    if (!sku) { skipped++; pushError(lineNo, "skuが空です"); continue; }
+
+    const qty = Number(qtyRaw);
+    // ✅ 0はエラーにしない（0は履歴/在庫変更なしでスキップ扱いにする）
+    if (!Number.isFinite(qty) || qty < 0){ skipped++; pushError(lineNo, `qtyが不正（"${qtyRaw}"）`); continue; }
+    if (qty === 0){ skipped++; continue; }
+
+    // nameが空なら stocksから補完（あれば）
+    let finalName = name;
+    if (!finalName){
+      const ex = await supabaseClient.from("stocks").select("name").eq("sku", sku).maybeSingle();
+      if (!ex.error && ex.data?.name) finalName = ex.data.name;
     }
-    if(!sku){
-      skip++;
+
+    // history（batch付き）
+    const hin = await supabaseClient.from("history").insert({
+      date: fakeIso,
+      user: currentUser(),
+      type: `出庫（CSV月指定） (batch:${batch})`,
+      sku,
+      name: finalName || "",
+      qty
+    });
+    if (hin.error){ pushError(lineNo, `history insert失敗: ${hin.error.message}`); continue; }
+
+    inserted++;
+
+    // 在庫を減らす
+    if (reduceStock){
+      const row = stockMap.get(sku);
+      if (!row){
+        // stocksに存在しないSKUはスキップ（履歴は残す）
+        continue;
+      }
+      const cur = Number(row.qty || 0);
+      const newQty = Math.max(0, cur - qty); // ✅ 0未満は0へ
+      const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", row.id);
+      if (up.error){ pushError(lineNo, `stocks update失敗（${sku}）: ${up.error.message}`); continue; }
+      updatedStocks++;
+      // map更新
+      row.qty = newQty;
+      stockMap.set(sku, row);
+    }
+  }
+
+  // ✅ Undo保存
+  saveUndo({
+    batch,
+    label: `出庫数CSVアップロード（月指定）${reduceStock ? "（在庫減らす）" : "（履歴のみ）"}`,
+    at: new Date().toISOString(),
+    stocksSnapshot: stocksSnap
+  });
+
+  inputEl.value = "";
+  await loadAll();
+
+  const summary = `出庫CSV（月指定）完了\n追加: ${inserted}件\n在庫更新: ${updatedStocks}件\nスキップ: ${skipped}件\nエラー: ${errors.length}件`;
+  if (errors.length){
+    alert(summary + "\n\n--- エラー詳細（最大20件） ---\n" + errors.slice(0,20).join("\n"));
+    setStatus(`出庫CSV（月指定）完了（エラー ${errors.length}件）`, false);
+  }else{
+    alert(summary);
+    setStatus("出庫CSV（月指定）完了（エラーなし）", true);
+  }
+}
+
+/* ========= 6) 棚卸CSV + 差分レポート ========= */
+async function importStocktakeCSV(inputEl){
+  if (!checkPin()) { inputEl.value = ""; return; }
+  const file = inputEl.files?.[0];
+  if (!file) return;
+
+  setStatus("棚卸CSV読み込み中…", true);
+
+  // ✅ Undo用スナップショット
+  let stocksSnap = null;
+  try{ stocksSnap = await snapshotStocks(); }catch(e){ console.warn("snapshot failed", e); }
+  const batch = makeBatchId();
+
+  const text = await file.text();
+  const rows = parseCSV(text).map(r => r.map(c => (c ?? "").trim())).filter(r => r.length >= 2);
+  if (!rows.length) { alert("CSVが空です"); inputEl.value = ""; return; }
+
+  const header = rows[0].map(x => x.toLowerCase());
+  const hasHeader = header.includes("sku") || header.includes("qty") || header.includes("name");
+
+  let dataRows = rows;
+  let idxSku = 0, idxName = -1, idxQty = 1;
+
+  if (hasHeader){
+    idxSku = header.indexOf("sku"); if (idxSku === -1) idxSku = 0;
+    idxName = header.indexOf("name");
+    idxQty = header.indexOf("qty"); if (idxQty === -1) idxQty = 1;
+    dataRows = rows.slice(1);
+  } else {
+    if (rows[0].length >= 3) { idxSku = 0; idxName = 1; idxQty = 2; }
+    else { idxSku = 0; idxName = -1; idxQty = 1; }
+  }
+
+  const existing = await supabaseClient.from("stocks").select("*");
+  if (existing.error) return showErr("既存在庫取得失敗", existing.error);
+
+  const bySku = new Map((existing.data||[]).filter(x=>x.sku).map(x => [x.sku, x]));
+
+  let processed = 0, updated = 0, inserted = 0, deleted = 0, skipped = 0;
+  const errors = [];
+  const pushError = (line, msg) => errors.push(`行${line}: ${msg}`);
+
+  const diffs = [];
+
+  setStatus("棚卸取り込み中…", true);
+
+  for (let i=0; i<dataRows.length; i++){
+    const r = dataRows[i];
+    const lineNo = hasHeader ? (i + 2) : (i + 1);
+
+    const sku = (r[idxSku] || "").trim();
+    const name = (idxName >= 0 ? (r[idxName] || "").trim() : "");
+    const qtyRaw = (r[idxQty] || "").trim();
+
+    if (!sku) { skipped++; pushError(lineNo, "skuが空です"); continue; }
+
+    const qty = Number(qtyRaw);
+    // ✅ 0はOK
+    if (!Number.isFinite(qty) || qty < 0){
+      skipped++; pushError(lineNo, `qtyが不正（"${qtyRaw}"）`); continue;
+    }
+
+    const found = bySku.get(sku);
+
+    if (!found){
+      if (qty <= 0) { skipped++; continue; }
+
+      const payload = { sku, name: name || "", qty };
+      const ins = await supabaseClient.from("stocks").insert(payload);
+      if (ins.error){ pushError(lineNo, `insert失敗: ${ins.error.message}`); continue; }
+
+      inserted++; processed++;
+
+      diffs.push({ sku, name: payload.name, before: 0, after: qty, diff: qty });
+
+      const hin = await supabaseClient.from("history").insert({
+        date: new Date().toISOString(),
+        user: currentUser(),
+        type: `棚卸（新規） (batch:${batch})`,
+        sku,
+        name: payload.name,
+        qty
+      });
+      if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
       continue;
     }
 
-    // 変更前を記録（Undo）
-    recordBefore(batch, sku, snapshotRow(STATE.stockMap[sku]));
+    const before = Number(found.qty || 0);
+    const after = qty;
+    const newName = name ? name : (found.name || "");
 
-    if(mode === "delta"){
-      // sku,name,delta,alert_qty
-      const delta = toInt(r[2], 0);
-      const alertStr = (r[3] ?? "").trim();
-      const alert_qty = alertStr === "" ? undefined : toInt(alertStr, undefined);
+    if (after === 0){
+      // ※棚卸は仕様通り delete（必要ならここも0保持に変更できる）
+      const del = await supabaseClient.from("stocks").delete().eq("id", found.id);
+      if (del.error){ pushError(lineNo, `delete失敗: ${del.error.message}`); continue; }
 
-      const existed = STATE.stockMap[sku];
-      if(existed){
-        const nextQty = toInt(existed.qty,0) + delta;
-        if(nextQty <= 0){
-          const del = await supabase.from("stocks").delete().eq("sku", sku);
-          if(del.error){ err++; errLines.push(`L${i+1}: ${del.error.message}`); continue; }
-        }else{
-          const payload = { qty: nextQty };
-          if(name) payload.name = name;
-          if(alertStr !== "") payload.alert_qty = alert_qty;
-          const up = await supabase.from("stocks").update(payload).eq("sku", sku);
-          if(up.error){ err++; errLines.push(`L${i+1}: ${up.error.message}`); continue; }
-        }
-      }else{
-        const nextQty = delta;
-        if(nextQty <= 0){ skip++; continue; }
-        const payload = { sku, name, qty: nextQty };
-        if(alertStr !== "") payload.alert_qty = alert_qty;
-        const ins = await supabase.from("stocks").insert([payload]);
-        if(ins.error){ err++; errLines.push(`L${i+1}: ${ins.error.message}`); continue; }
-      }
+      deleted++; updated++; processed++;
 
-      await addHistory({
-        type: "CSV増減",
-        sku, name: name || (STATE.stockMap[sku]?.name||""),
-        qty: delta,
-        batch_id: batch.id
+      diffs.push({ sku, name: newName, before, after: 0, diff: (0 - before) });
+
+      const hin = await supabaseClient.from("history").insert({
+        date: new Date().toISOString(),
+        user: currentUser(),
+        type: `棚卸（削除） (batch:${batch})`,
+        sku,
+        name: newName,
+        qty: Math.abs(before - after)
       });
-
-      ok++;
-    }else{
-      // overwrite: sku,name,qty,alert_qty
-      const qty = toInt(r[2], 0);
-      const alertStr = (r[3] ?? "").trim();
-      const alert_qty = alertStr === "" ? undefined : toInt(alertStr, undefined);
-
-      if(qty <= 0){
-        const del = await supabase.from("stocks").delete().eq("sku", sku);
-        if(del.error){ err++; errLines.push(`L${i+1}: ${del.error.message}`); continue; }
-      }else{
-        const payload = { sku, qty, name };
-        if(alertStr !== "") payload.alert_qty = alert_qty;
-        const up = await supabase.from("stocks").upsert([payload], { onConflict:"sku" });
-        if(up.error){ err++; errLines.push(`L${i+1}: ${up.error.message}`); continue; }
-      }
-
-      await addHistory({
-        type: "CSV上書き",
-        sku, name: name || (STATE.stockMap[sku]?.name||""),
-        qty,
-        batch_id: batch.id
-      });
-
-      ok++;
-    }
-  }
-
-  saveUndo("stock_import", batch);
-  await loadAll();
-
-  const msg = `在庫CSVインポート結果\nOK:${ok} / SKIP:${skip} / ERROR:${err}`;
-  if(errLines.length){
-    alert(msg + "\n\nエラー詳細（最大20件）\n" + errLines.slice(0,20).join("\n"));
-  }else{
-    alert(msg);
-  }
-}
-
-/* =========================
-  棚卸CSVインポート（Undo対応 / name更新）
-========================= */
-async function importInventoryCsv(){
-  if(!needEdit()) return;
-
-  const text = (document.getElementById("invCsvText").value || "").trim();
-  if(!text){ alert("CSVを入力してください"); return; }
-
-  const rows = parseCSV(text);
-  if(rows.length === 0){ alert("CSVが空です"); return; }
-
-  let start = 0;
-  if(hasHeader(rows[0])) start = 1;
-
-  const batch = { id: makeUUID(), kind:"inventory_import", createdAt: nowIso(), before:{} };
-
-  // インポート対象SKU一覧
-  const targetMap = {}; // sku -> {name, qty}
-  for(let i=start;i<rows.length;i++){
-    const r = rows[i].map(x => (x ?? "").trim());
-    if(r.length < 2) continue;
-
-    const sku = (r[0] || "").trim();
-    if(!sku) continue;
-
-    let name = "";
-    let qty = 0;
-
-    if(r.length >= 3){
-      name = (r[1] || "").trim();
-      qty = toInt(r[2], 0);
-    }else{
-      // 2列: sku,qty
-      qty = toInt(r[1], 0);
+      if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
+      continue;
     }
 
-    targetMap[sku] = { sku, name, qty };
-  }
-
-  const targetSkus = Object.keys(targetMap);
-
-  // 変更前スナップショット（Undo）
-  for(const sku of targetSkus){
-    recordBefore(batch, sku, snapshotRow(STATE.stockMap[sku]));
-  }
-
-  // 1) 既存 → 更新 or 削除
-  // 2) 無い → 新規追加（qty>0のみ）
-  let ok=0, add=0, del=0;
-
-  // 既存SKU全体を見て、棚卸対象外は触らない（仕様）
-  for(const sku of targetSkus){
-    const t = targetMap[sku];
-    const existed = STATE.stockMap[sku];
-
-    if(existed){
-      if(t.qty <= 0){
-        const d = await supabase.from("stocks").delete().eq("sku", sku);
-        if(d.error){ alert(d.error.message); return; }
-        await addHistory({
-          type: "棚卸（削除）",
-          sku, name: existed.name || "",
-          qty: toInt(existed.qty,0),
-          batch_id: batch.id
-        });
-        del++;
-      }else{
-        const payload = { qty: t.qty };
-        // nameが入っていれば更新（空なら維持）
-        if(t.name) payload.name = t.name;
-        const up = await supabase.from("stocks").update(payload).eq("sku", sku);
-        if(up.error){ alert(up.error.message); return; }
-
-        await addHistory({
-          type: "棚卸",
-          sku, name: (t.name || existed.name || ""),
-          qty: (t.qty - toInt(existed.qty,0)),
-          batch_id: batch.id
-        });
-        ok++;
-      }
-    }else{
-      if(t.qty <= 0) continue;
-      const payload = { sku, qty: t.qty, name: t.name || "" };
-      const ins = await supabase.from("stocks").insert([payload]);
-      if(ins.error){ alert(ins.error.message); return; }
-
-      await addHistory({
-        type: "棚卸（新規）",
-        sku, name: t.name || "",
-        qty: t.qty,
-        batch_id: batch.id
-      });
-      add++;
-    }
-  }
-
-  saveUndo("inventory_import", batch);
-  await loadAll();
-  alert(`棚卸CSV完了\n更新:${ok} / 新規:${add} / 削除:${del}`);
-}
-
-/* =========================
-  出庫CSV（月指定 / Undo対応：履歴だけ消せばOK）
-========================= */
-async function importShipCsv(){
-  if(!needEdit()) return;
-
-  const month = (document.getElementById("shipCsvMonth").value || "").trim();
-  const dateIso = jstDateForMonth(month);
-  if(!dateIso){
-    alert("月（YYYY-MM）を正しく入力してください");
-    return;
-  }
-
-  const text = (document.getElementById("shipCsvText").value || "").trim();
-  if(!text){ alert("CSVを入力してください"); return; }
-
-  const rows = parseCSV(text);
-  if(rows.length === 0){ alert("CSVが空です"); return; }
-
-  let start=0;
-  if(hasHeader(rows[0])) start=1;
-
-  const batch = { id: makeUUID(), kind:"ship_import", createdAt: nowIso(), shipMonth: month };
-
-  const inserts = [];
-  for(let i=start;i<rows.length;i++){
-    const r = rows[i].map(x => (x ?? "").trim());
-    if(r.length < 2) continue;
-
-    let sku = (r[0] || "").trim();
-    if(!sku) continue;
-
-    let name="", qty=0;
-    if(r.length >= 3){
-      name = (r[1] || "").trim();
-      qty = toInt(r[2], 0);
-    }else{
-      qty = toInt(r[1], 0);
-    }
-    if(qty <= 0) continue;
-
-    if(!name){
-      const st = STATE.stockMap[sku];
-      if(st) name = st.name || "";
+    if (before === after && newName === (found.name || "")) {
+      processed++;
+      continue;
     }
 
-    inserts.push({
-      date: dateIso,
-      user: STATE.user || "未入力",
-      type: "出庫（CSV月指定）",
+    const upPayload = { qty: after };
+    if (newName !== (found.name || "")) upPayload.name = newName;
+
+    const up = await supabaseClient.from("stocks").update(upPayload).eq("id", found.id);
+    if (up.error){ pushError(lineNo, `update失敗: ${up.error.message}`); continue; }
+
+    updated++; processed++;
+
+    diffs.push({ sku, name: newName, before, after, diff: (after - before) });
+
+    const hin = await supabaseClient.from("history").insert({
+      date: new Date().toISOString(),
+      user: currentUser(),
+      type: `棚卸 (batch:${batch})`,
       sku,
-      name: name || "",
-      qty,
-      batch_id: batch.id
+      name: newName,
+      qty: Math.abs(before - after)
     });
+    if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
   }
 
-  if(inserts.length === 0){
-    alert("取り込める行がありません");
-    return;
-  }
+  // ✅ Undo保存
+  saveUndo({
+    batch,
+    label: "棚卸CSVインポート",
+    at: new Date().toISOString(),
+    stocksSnapshot: stocksSnap
+  });
 
-  const ins = await supabase.from("history").insert(inserts);
-  if(ins.error){
-    // batch_idが無い場合でも履歴登録はできるようfallback
-    const fallback = inserts.map(x => {
-      const y = {...x}; delete y.batch_id; return y;
-    });
-    const ins2 = await supabase.from("history").insert(fallback);
-    if(ins2.error){
-      alert("出庫CSV取り込み失敗: " + ins2.error.message);
-      return;
-    }
-    // batch_id無しだとUndo不能なので、Undo保存しない
-    await loadAll();
-    alert("出庫CSV取り込み完了（ただし history.batch_id が無いため取り消し不可）");
-    return;
-  }
-
-  saveUndo("ship_import", batch);
+  inputEl.value = "";
   await loadAll();
-  alert(`出庫CSV取り込み完了: ${inserts.length}件`);
-}
 
-/* =========================
-  履歴描画 / DL
-========================= */
-function renderHistory(){
-  const q = (document.getElementById("histQ").value || "").trim().toLowerCase();
-  const limit = toInt(document.getElementById("histLimit").value, 100);
-
-  let rows = STATE.history.slice(0, limit);
-  if(q){
-    rows = rows.filter(h => {
-      const s = `${h.date||""} ${h.user||""} ${h.type||""} ${h.sku||""} ${h.name||""} ${h.qty||""}`.toLowerCase();
-      return s.includes(q);
-    });
-  }
-
-  const tb = document.getElementById("histBody");
-  tb.innerHTML = "";
-  for(const h of rows){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="mono">${escapeHtml(h.date||"")}</td>
-      <td>${escapeHtml(h.user||"")}</td>
-      <td>${escapeHtml(h.type||"")}</td>
-      <td class="mono">${escapeHtml(h.sku||"")}</td>
-      <td class="nameCell">${escapeHtml(h.name||"")}</td>
-      <td>${toInt(h.qty,0)}</td>
-    `;
-    tb.appendChild(tr);
-  }
-}
-function downloadStocksCsv(){
-  const lines = [];
-  lines.push(csvLine(["sku","name","qty","alert_qty"]));
-  for(const r of STATE.stocks){
-    lines.push(csvLine([r.sku||"", r.name||"", toInt(r.qty,0), (r.alert_qty ?? "")]));
-  }
-  downloadText(`stocks_${todayYMD()}.csv`, lines.join("\n"));
-}
-function downloadHistoryCsv(){
-  const lines = [];
-  lines.push(csvLine(["date","user","type","sku","name","qty","batch_id"]));
-  for(const h of STATE.history){
-    lines.push(csvLine([h.date||"", h.user||"", h.type||"", h.sku||"", h.name||"", toInt(h.qty,0), (h.batch_id ?? "")]));
-  }
-  downloadText(`history_${todayYMD()}.csv`, lines.join("\n"));
-}
-
-/* =========================
-  出庫推移（直近6ヶ月）
-========================= */
-function renderShipTrend(){
-  const head = document.getElementById("shipTrendHead");
-  const body = document.getElementById("shipTrendBody");
-  head.innerHTML = "";
-  body.innerHTML = "";
-
-  const months = STATE.shipAgg?.months6 || getLastNMonths(6); // [今月, 先月...]
-  // 表示は左→右を古い→新しいにしたいので逆
-  const monthsAsc = months.slice().reverse();
-
-  const ths = ["SKU","商品"].concat(monthsAsc);
-  for(const t of ths){
-    const th = document.createElement("th");
-    th.textContent = t;
-    head.appendChild(th);
-  }
-
-  // 出庫が一度でもあるSKUだけ
-  const bySkuMonth = STATE.shipAgg?.bySkuMonth || {};
-  const skus = Object.keys(bySkuMonth).sort();
-
-  for(const sku of skus){
-    const st = STATE.stockMap[sku];
-    const name = st?.name || "";
-
-    const tr = document.createElement("tr");
-    let html = `<td class="mono" style="font-weight:900">${escapeHtml(sku)}</td><td class="nameCell">${escapeHtml(name)}</td>`;
-    for(const ym of monthsAsc){
-      const v = toInt(bySkuMonth[sku][ym] || 0, 0);
-      html += `<td>${v}</td>`;
-    }
-    tr.innerHTML = html;
-    body.appendChild(tr);
-  }
-}
-
-/* =========================
-  棚卸差分TOP10
-========================= */
-function renderInvDiffTop10(){
-  const tb = document.getElementById("invDiffBody");
-  tb.innerHTML = "";
-
-  const rows = STATE.history
-    .filter(h => String(h.type||"").includes("棚卸"))
-    .slice(0, 2000)
-    .map(h => ({
-      sku: h.sku || "",
-      name: h.name || "",
-      diff: Math.abs(toInt(h.qty,0)),
-      qty: toInt(h.qty,0),
-      date: h.date || ""
-    }))
-    .sort((a,b)=> b.diff - a.diff)
-    .slice(0,10);
-
-  for(const r of rows){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="mono">${escapeHtml(r.sku)}</td>
-      <td class="nameCell">${escapeHtml(r.name)}</td>
-      <td>${r.qty}</td>
-      <td class="mono">${escapeHtml(r.date).slice(0,16).replace("T"," ")}</td>
-    `;
-    tb.appendChild(tr);
-  }
-}
-
-/* =========================
-  オートバックアップ
-========================= */
-function startAutoBackup(){
-  const min = Math.max(1, toInt(document.getElementById("autoBackupMin").value, 30));
-  stopAutoBackup();
-
-  const tag = document.getElementById("abTag");
-  tag.textContent = `稼働中（${min}分）`;
-  tag.className = "tag warn";
-
-  const tick = () => {
-    downloadStocksCsv();
-    downloadHistoryCsv();
+  const sorted = [...diffs].sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff));
+  window.__stocktake_report__ = {
+    meta: {
+      at: new Date().toISOString(),
+      count: diffs.length,
+      processed, updated, inserted, deleted, skipped,
+      errors: errors.length
+    },
+    rows: sorted
   };
-  tick();
-  STATE.autoBackupTimer = setInterval(tick, min * 60 * 1000);
-}
-function stopAutoBackup(){
-  if(STATE.autoBackupTimer){
-    clearInterval(STATE.autoBackupTimer);
-    STATE.autoBackupTimer = null;
+  renderStocktakeReport();
+
+  const summary =
+`棚卸CSV完了
+処理: ${processed}（update:${updated} / insert:${inserted} / delete:${deleted}）
+差分発生: ${diffs.length}
+スキップ: ${skipped}
+エラー: ${errors.length}`;
+
+  if (errors.length){
+    alert(summary + "\n\n--- エラー詳細（最大20件） ---\n" + errors.slice(0,20).join("\n"));
+    setStatus(`棚卸完了（エラー ${errors.length}件）`, false);
+  }else{
+    alert(summary + "\n\n※差分レポート（TOP10）を保存しました");
+    setStatus("棚卸完了（エラーなし）", true);
   }
-  const tag = document.getElementById("abTag");
-  tag.textContent = "停止中";
-  tag.className = "tag";
 }
 
-/* =========================
-  初期化
-========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  // 初期ユーザー名
-  const u = (localStorage.getItem(LS_USER) || "").trim();
-  document.getElementById("userName").value = u || "未入力";
-  STATE.user = (u || "未入力");
-  loadLocalState();
-  loadAll();
-});
+function renderStocktakeReport(){
+  const metaEl = document.getElementById("stocktakeReportMeta");
+  const table = document.getElementById("stocktakeReportTable");
+  const rep = window.__stocktake_report__ || { meta:null, rows:[] };
+
+  table.innerHTML = `
+    <tr>
+      <th style="width:160px;">SKU</th>
+      <th>商品</th>
+      <th style="width:120px; text-align:right;">前</th>
+      <th style="width:120px; text-align:right;">後</th>
+      <th style="width:120px; text-align:right;">差分</th>
+    </tr>
+  `;
+
+  if (!rep.meta || !rep.rows.length){
+    metaEl.textContent = "まだ棚卸が実行されていません。";
+    const tr = table.insertRow();
+    tr.innerHTML = `<td colspan="5" class="center muted">棚卸を実行すると、ここに差分TOP10が出ます</td>`;
+    return;
+  }
+
+  metaEl.textContent =
+    `直近: ${formatDate(rep.meta.at)} / 差分: ${rep.meta.count}件 / update:${rep.meta.updated} insert:${rep.meta.inserted} delete:${rep.meta.deleted} / エラー:${rep.meta.errors}`;
+
+  const top = rep.rows.slice(0, 10);
+  top.forEach(r => {
+    const tr = table.insertRow();
+    tr.innerHTML = `
+      <td class="muted">${escapeHtml(r.sku)}</td>
+      <td class="nameCell">${escapeHtml(r.name || "")}</td>
+      <td class="qty">${Number(r.before)}</td>
+      <td class="qty">${Number(r.after)}</td>
+      <td class="qty">${Number(r.diff)}</td>
+    `;
+  });
+}
+
+function downloadStocktakeReportCSV(){
+  const rep = window.__stocktake_report__;
+  if (!rep || !rep.meta || !rep.rows.length){
+    alert("棚卸差分レポートがありません（棚卸を実行してから）");
+    return;
+  }
+  let csv = "sku,name,before,after,diff\n";
+  rep.rows.forEach(r => {
+    csv += `${csvEscape(r.sku)},${csvEscape(r.name||"")},${Number(r.before)},${Number(r.after)},${Number(r.diff)}\n`;
+  });
+  downloadText(`stocktake_report_${todayStr()}.csv`, csv);
+}
+
+function clearStocktakeReport(){
+  window.__stocktake_report__ = { meta:null, rows:[] };
+  renderStocktakeReport();
+  setStatus("棚卸レポートをクリアしました", true);
+}
+
+/* ========= 日時: JST ========= */
+function formatDate(iso){
+  try{
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+
+    const parts = new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).formatToParts(d);
+
+    const get = (type) => parts.find(p => p.type === type)?.value || "";
+    return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
+  }catch(e){
+    return String(iso);
+  }
+}
+
+/* ========= escaping ========= */
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+function escapeJs(s) {
+  return String(s ?? "").replaceAll("\\","\\\\").replaceAll("'","\\'").replaceAll("\n"," ").replaceAll("\r"," ");
+}
 </script>
+
 </body>
 </html>
