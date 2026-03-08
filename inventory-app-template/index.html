@@ -381,7 +381,7 @@
   <header>
     <div class="title">
       <h1>在庫管理システム</h1>
-      <div class="subtitle">UI v10 / メイン：検索・入庫・CSV/メンテ・在庫一覧（履歴/棚卸/バックアップは下に退避）</div>
+      <div class="subtitle">UI v11 / メイン：検索・入庫・CSV/メンテ・在庫一覧（Undo表示改善）</div>
     </div>
 
     <div class="topActions">
@@ -836,6 +836,7 @@ function stripBatch(type){
   return String(type||"").replace(/\s*\(batch:[^)]+\)\s*$/,"");
 }
 
+/* ✅ UI v11: Undo 成功/注意あり/失敗 を正しく表示 */
 async function undoLastImport(){
   if (!checkPin()) return;
 
@@ -850,18 +851,24 @@ async function undoLastImport(){
 
   setStatus("Undo 実行中…", true);
 
+  const warnings = [];
+  let stocksRestored = false;
+
   try{
-    // 1) history：batch を含む type を削除
+    // 1) history：batch を含む type を削除（失敗しても続行）
     if (u.batch){
       const delH = await supabaseClient
         .from("history")
         .delete()
         .ilike("type", `% (batch:${u.batch})%`);
-      // ilike できない環境がある時の保険：成功/失敗は許容（stocks復元が主）
-      if (delH.error) console.warn("undo history delete failed", delH.error);
+
+      if (delH.error){
+        console.warn("undo history delete failed", delH.error);
+        warnings.push("履歴の削除に失敗（在庫復元は継続）");
+      }
     }
 
-    // 2) stocks：スナップショットに復元
+    // 2) stocks：スナップショットに復元（ここが本体）
     if (Array.isArray(u.stocksSnapshot)){
       const before = u.stocksSnapshot;
 
@@ -872,7 +879,7 @@ async function undoLastImport(){
       const beforeSkuSet = new Set(before.filter(x=>x.sku).map(x=>String(x.sku)));
       const beforeNoSkuNameSet = new Set(before.filter(x=>!x.sku).map(x=>String(x.name||"")));
 
-      // 今あるけどスナップショットに無いものは削除（skuありはskuで、sku無しは(name+sku null)で）
+      // 今あるけどスナップショットに無いものは削除
       const toDeleteIds = [];
       now.forEach(r=>{
         const sku = r.sku ? String(r.sku) : "";
@@ -884,12 +891,11 @@ async function undoLastImport(){
         }
       });
       if (toDeleteIds.length){
-        // 一括delete（id in）
         const del = await supabaseClient.from("stocks").delete().in("id", toDeleteIds);
         if (del.error) throw del.error;
       }
 
-      // upsert（skuあるものはsku onConflict、sku無いものはidでupdate優先）
+      // skuあり → upsert（失敗したら致命的）
       const withSku = before.filter(x=>x.sku).map(x=>({
         sku: x.sku,
         name: x.name || "",
@@ -904,7 +910,7 @@ async function undoLastImport(){
         if (up1.error) throw up1.error;
       }
 
-      // sku無しは「idが残ってる」前提で update（無い場合はinsert）
+      // sku無し → update試してダメならinsert（軽い失敗は警告扱い）
       const noSku = before.filter(x=>!x.sku);
       for (const x of noSku){
         const payload = {
@@ -913,20 +919,42 @@ async function undoLastImport(){
           alert_qty: (x.alert_qty === undefined ? null : x.alert_qty),
           sku: null
         };
-        // idで update を試す
+
         const upTry = await supabaseClient.from("stocks").update(payload).eq("id", x.id);
         if (upTry.error){
-          // update失敗なら insert（重複などは許容されないが、sku無し運用が稀なので割り切り）
+          console.warn("undo update(noSku) failed", upTry.error);
+          warnings.push("SKUなし行の一部復元に失敗（影響は限定的）");
+
           const insTry = await supabaseClient.from("stocks").insert(payload);
-          if (insTry.error) console.warn("undo insert(noSku) failed", insTry.error);
+          if (insTry.error){
+            console.warn("undo insert(noSku) failed", insTry.error);
+            warnings.push("SKUなし行のinsertも失敗（影響は限定的）");
+          }
         }
       }
+
+      stocksRestored = true;
+    }else{
+      warnings.push("在庫スナップショットが無く、完全復元できませんでした");
     }
 
+    // 3) 仕上げ
     clearUndo();
     await loadAll();
-    setStatus("Undo 完了", true);
-    alert("ひとつ前のCSV操作を取り消しました");
+
+    if (stocksRestored){
+      if (warnings.length){
+        setStatus("Undo 完了（注意あり）", true);
+        alert("Undoは完了しました。\n\n注意:\n- " + warnings.join("\n- "));
+      }else{
+        setStatus("Undo 完了", true);
+        alert("ひとつ前のCSV操作を取り消しました（成功）");
+      }
+    }else{
+      setStatus("Undo 実行（警告あり）", false);
+      alert("Undoは実行しましたが、完全には復元できていない可能性があります。\n\n注意:\n- " + warnings.join("\n- "));
+    }
+
   }catch(e){
     console.error(e);
     showErr("Undo 失敗", e);
@@ -1092,12 +1120,12 @@ async function loadAll() {
 
   rebuildShipAgg();
 
-  applyStockView();    // 1)検索 + 2)不足表示
-  applyHistoryView();  // 4)履歴フィルタ
+  applyStockView();
+  applyHistoryView();
 
   renderMonthly(window.__history_cache__);
   renderStocktakeReport();
-  renderSkuShipLast6(); // SKU別6ヶ月
+  renderSkuShipLast6();
 
   updateUndoBadge();
   setStatus("準備OK", true);
@@ -1506,7 +1534,6 @@ async function shipItem(sku, name) {
   if (ex.error) return showErr("stocks 取得失敗", ex.error);
   if (!ex.data) return;
 
-  // ✅ 0以下で削除しない → 0に丸める
   const newQty = Math.max(0, Number(ex.data.qty || 0) - 1);
 
   const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
@@ -1542,7 +1569,6 @@ async function shipItemQty(sku, name) {
   const n = Number(input);
   if (!Number.isFinite(n) || n <= 0) return alert("1以上の数字を入力してください");
 
-  // ✅ 0以下で削除しない → 0に丸める
   const newQty = Math.max(0, current - n);
 
   const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
@@ -1624,7 +1650,6 @@ async function editQty(sku, name, currentQty) {
   if (ex.error) return showErr("stocks 取得失敗", ex.error);
   if (!ex.data) return alert("商品が見つかりません");
 
-  // ✅ 0でも削除しない → qty=0で保持
   const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", ex.data.id);
   if (up.error) return showErr("stocks update 失敗", up.error);
 
@@ -1681,14 +1706,13 @@ function exportOrderAssistCSV(){
   if (!Number.isFinite(factor) || factor <= 0) return alert("係数は 0 より大きい数で入力してください");
   if (minN !== null && (!Number.isFinite(minN) || minN < 0)) return alert("最低発注数は0以上で入力してください（空欄OK）");
 
-  // 基準=alert×係数
   const rows = stocks.map(r=>{
     const alertQty = getAlertQtyForRow(r);
     const threshold = alertQty * factor;
     const qty = Number(r.qty || 0);
-    const need = threshold - qty; // これが正なら不足
+    const need = threshold - qty;
     return { ...r, _alert: alertQty, _threshold: threshold, _need: need };
-  }).filter(r => r._need > 0); // qty < alert×係数
+  }).filter(r => r._need > 0);
 
   let csv = "sku,name,qty,alert_qty,threshold,order_qty\n";
   rows.forEach(r => {
@@ -1814,7 +1838,6 @@ async function importStocksCSV(inputEl) {
 
   setStatus("CSV読み込み中…", true);
 
-  // ✅ Undo用スナップショット
   let stocksSnap = null;
   try{ stocksSnap = await snapshotStocks(); }catch(e){ console.warn("snapshot failed", e); }
 
@@ -1872,7 +1895,6 @@ async function importStocksCSV(inputEl) {
       if (!name && !sku) { countSkipped++; continue; }
 
       const num = Number(valRaw);
-      // ✅ 0はOK（数値として）
       if (!Number.isFinite(num)) { countSkipped++; pushError(lineNo, `数量が数値ではありません（"${valRaw}"）`); continue; }
 
       const alertVal = normalizeAlertInput(alertRaw);
@@ -1882,7 +1904,7 @@ async function importStocksCSV(inputEl) {
 
       if (!found) {
         const startQty = num;
-        if (startQty <= 0) { countSkipped++; continue; } // 新規で0以下は作らない
+        if (startQty <= 0) { countSkipped++; continue; }
 
         const payload = { sku: sku || null, name: name || "", qty: startQty };
         if (alertVal !== null && idxAlert >= 0) payload.alert_qty = alertVal;
@@ -1944,7 +1966,6 @@ async function importStocksCSV(inputEl) {
     }
   }
 
-  // ✅ Undo保存
   if (stocksSnap){
     saveUndo({
       batch,
@@ -1988,7 +2009,6 @@ async function importShipCSVWithMonth(inputEl){
 
   setStatus("出庫CSV読み込み中…", true);
 
-  // ✅ Undo用スナップショット（在庫を触る可能性があるので常に取る）
   let stocksSnap = null;
   try{ stocksSnap = await snapshotStocks(); }catch(e){ console.warn("snapshot failed", e); }
 
@@ -2017,12 +2037,10 @@ async function importShipCSVWithMonth(inputEl){
   const errors = [];
   const pushError = (line, msg) => errors.push(`行${line}: ${msg}`);
 
-  // 指定月の「15日 12:00 JST」をdateにする（月の判定にだけ使う想定）
   const fakeIso = new Date(`${ym}-15T12:00:00+09:00`).toISOString();
 
   let inserted = 0, skipped = 0, updatedStocks = 0;
 
-  // stocks を先読み（減らす場合、行ごとのselectを避ける）
   let stockMap = new Map();
   if (reduceStock){
     const s = await supabaseClient.from("stocks").select("*");
@@ -2043,18 +2061,15 @@ async function importShipCSVWithMonth(inputEl){
     if (!sku) { skipped++; pushError(lineNo, "skuが空です"); continue; }
 
     const qty = Number(qtyRaw);
-    // ✅ 0はエラーにしない（0は履歴/在庫変更なしでスキップ扱いにする）
     if (!Number.isFinite(qty) || qty < 0){ skipped++; pushError(lineNo, `qtyが不正（"${qtyRaw}"）`); continue; }
     if (qty === 0){ skipped++; continue; }
 
-    // nameが空なら stocksから補完（あれば）
     let finalName = name;
     if (!finalName){
       const ex = await supabaseClient.from("stocks").select("name").eq("sku", sku).maybeSingle();
       if (!ex.error && ex.data?.name) finalName = ex.data.name;
     }
 
-    // history（batch付き）
     const hin = await supabaseClient.from("history").insert({
       date: fakeIso,
       user: currentUser(),
@@ -2067,25 +2082,21 @@ async function importShipCSVWithMonth(inputEl){
 
     inserted++;
 
-    // 在庫を減らす
     if (reduceStock){
       const row = stockMap.get(sku);
       if (!row){
-        // stocksに存在しないSKUはスキップ（履歴は残す）
         continue;
       }
       const cur = Number(row.qty || 0);
-      const newQty = Math.max(0, cur - qty); // ✅ 0未満は0へ
+      const newQty = Math.max(0, cur - qty);
       const up = await supabaseClient.from("stocks").update({ qty: newQty }).eq("id", row.id);
       if (up.error){ pushError(lineNo, `stocks update失敗（${sku}）: ${up.error.message}`); continue; }
       updatedStocks++;
-      // map更新
       row.qty = newQty;
       stockMap.set(sku, row);
     }
   }
 
-  // ✅ Undo保存
   saveUndo({
     batch,
     label: `出庫数CSVアップロード（月指定）${reduceStock ? "（在庫減らす）" : "（履歴のみ）"}`,
@@ -2114,7 +2125,6 @@ async function importStocktakeCSV(inputEl){
 
   setStatus("棚卸CSV読み込み中…", true);
 
-  // ✅ Undo用スナップショット
   let stocksSnap = null;
   try{ stocksSnap = await snapshotStocks(); }catch(e){ console.warn("snapshot failed", e); }
   const batch = makeBatchId();
@@ -2163,7 +2173,6 @@ async function importStocktakeCSV(inputEl){
     if (!sku) { skipped++; pushError(lineNo, "skuが空です"); continue; }
 
     const qty = Number(qtyRaw);
-    // ✅ 0はOK
     if (!Number.isFinite(qty) || qty < 0){
       skipped++; pushError(lineNo, `qtyが不正（"${qtyRaw}"）`); continue;
     }
@@ -2198,7 +2207,6 @@ async function importStocktakeCSV(inputEl){
     const newName = name ? name : (found.name || "");
 
     if (after === 0){
-      // ※棚卸は仕様通り delete（必要ならここも0保持に変更できる）
       const del = await supabaseClient.from("stocks").delete().eq("id", found.id);
       if (del.error){ pushError(lineNo, `delete失敗: ${del.error.message}`); continue; }
 
@@ -2244,7 +2252,6 @@ async function importStocktakeCSV(inputEl){
     if (hin.error) pushError(lineNo, `history失敗: ${hin.error.message}`);
   }
 
-  // ✅ Undo保存
   saveUndo({
     batch,
     label: "棚卸CSVインポート",
